@@ -1,5 +1,5 @@
 <?php
-    include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/Model/ConexionModel.php';
+     include_once __DIR__ . '/ConexionModel.php';
 
     function ConsultarUsuarioModel($consecutivo)
     {

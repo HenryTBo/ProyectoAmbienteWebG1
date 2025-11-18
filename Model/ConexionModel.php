@@ -3,23 +3,35 @@
     function OpenConnection()
     {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-        return mysqli_connect("127.0.0.1:3307", "root", "", "proyectoAmbienteWeb");
+
+        $host = "127.0.0.1";
+        $user = "root";
+        $pass = "";                       
+        $db   = "proyectoambienteweb";    
+        $port = 3307;                        //cambiar si lo tienen en distinto puerto :)
+
+        $conn = mysqli_connect($host, $user, $pass, $db, $port);
+
+        if (!$conn) {
+            throw new mysqli_sql_exception("Error de conexión: " . mysqli_connect_error());
+        }
+
+        return $conn;
     }
 
     function CloseConnection($context)
     {
-        mysqli_close($context);
+        if ($context) {
+            mysqli_close($context);
+        }
     }
 
     function SaveError($error)
     {
         $context = OpenConnection();
-
-        $mensaje = mysqli_real_escape_string($context, $error -> getMessage());
-
+        $mensaje = mysqli_real_escape_string($context, $error->getMessage());
         $sentencia = "CALL RegistrarError('$mensaje')";
-        $context -> query($sentencia);
-
+        $context->query($sentencia);
         CloseConnection($context);
     }
 

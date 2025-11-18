@@ -1,12 +1,14 @@
 <?php
-    include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/View/layoutInterno.php';
-    include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/Controller/UsuarioController.php';
+    include_once __DIR__ . '/../layoutInterno.php';
+    include_once __DIR__ . '/../../Controller/UsuarioController.php';
 
+    
+   
     $resultado = ConsultarUsuario();
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <?php showCss(); ?>
 
@@ -32,8 +34,7 @@
                             <div class="card-body">
 
                                 <?php
-                                if(isset($_POST["Mensaje"]))
-                                {
+                                if (isset($_POST["Mensaje"])) {
                                     echo '<div class="alert alert-primary">' . $_POST["Mensaje"] . '</div>';
                                 }
                                 ?>

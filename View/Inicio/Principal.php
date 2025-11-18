@@ -1,38 +1,40 @@
 <?php
-  include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/View/layoutInterno.php';
-  include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/Controller/InicioController.php';
+    include_once __DIR__ . '/../layoutInterno.php';
+    include_once __DIR__ . '/../../Controller/InicioController.php';
 
-
-   if($_SESSION["ConsecutivoPerfil"] == "1")
-  {
-    header("Location: PrincipalAdmin.php");
-    exit;
-  }
-
+    
+    if ($_SESSION["ConsecutivoPerfil"] == "1") {
+        header("Location: PrincipalAdmin.php");
+        exit;
+    }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <?php showCss(); ?>
-        <link href="../css/estilosInicio.css" rel="stylesheet" />            
-    </head>
-    
-    <body class="sb-nav-fixed">
-      <?php showNavBar(); ?>
-      <div id="layoutSidenav">
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <?php showCss(); ?>
+    <link href="../css/estilosInicio.css" rel="stylesheet" />
+</head>
+
+<body class="sb-nav-fixed">
+
+    <?php showNavBar(); ?>
+
+    <div id="layoutSidenav">
+
         <?php showSideBar(); ?>
 
         <div id="layoutSidenav_content">
-          <main>
+            <main>
+                <!-- Contenido principal -->
+            </main>
 
-          </main>
-
-          <?php showFooter(); ?>
+            <?php showFooter(); ?>
         </div>
-      </div>
-
+    </div>
 
     <?php showJs(); ?>      
-    </body>
+
+</body>
 </html>

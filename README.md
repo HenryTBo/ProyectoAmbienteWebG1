@@ -4,7 +4,7 @@ Proyecto del grupo 1 para el curso ambiente web/cliente servidor
 
 Integrantes:
 HenryTrejosBonilla
-
+NicoleChavesSolís
 
 
 Notas: Para utilizar la funcion de recuper contrasenna se tiene que poner el correo de la Universidad y la contrasenna en MiscelaneoController.php

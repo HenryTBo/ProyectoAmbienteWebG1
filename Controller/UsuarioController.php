@@ -1,5 +1,7 @@
 <?php
-    include_once $_SERVER['DOCUMENT_ROOT'] . '/ProyectoAmbienteWebG1/Model/UsuarioModel.php';
+    include_once __DIR__ . '/../Model/UsuarioModel.php';
+
+    
 
     if(session_status() == PHP_SESSION_NONE)
     {
