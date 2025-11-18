@@ -8,7 +8,7 @@
         $user = "root";
         $pass = "";                       
         $db   = "ProyectoAmbienteWeb";    
-        $port = 3307;                        //cambiar si lo tienen en distinto puerto :)
+        $port = 3307;  // cambiar si lo tienen en distinto puerto :)
 
         $conn = mysqli_connect($host, $user, $pass, $db, $port);
 
@@ -36,3 +36,4 @@
     }
 
 ?>
+
