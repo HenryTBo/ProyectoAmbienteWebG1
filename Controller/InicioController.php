@@ -1,4 +1,5 @@
 <?php
+    include_once __DIR__ . '/MiscelaneoController.php';        
     include_once __DIR__ . '/../Model/InicioModel.php';     
     
         //para qué es el "DIR" es una constante que lo que hace es devolverse a la ruta exacta en donde tengas el archivo actual :)
