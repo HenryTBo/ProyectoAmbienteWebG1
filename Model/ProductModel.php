@@ -1,11 +1,10 @@
 <?php
 // Model/ProductModel.php
-// Funciones para manejar productos (usa OpenConnection() de ConexionModel.php)
+// Manejo de productos - usa OpenConnection() / CloseConnection() desde ConexionModel.php
 
 if (!file_exists(__DIR__ . '/ConexionModel.php')) {
-    // opcional: lanzar o dejar que el controller se encargue
+    // Asegúrate de que ConexionModel.php exista y provea OpenConnection() y CloseConnection()
 }
-
 include_once __DIR__ . '/ConexionModel.php';
 
 function product_log_error($e) {
@@ -15,7 +14,37 @@ function product_log_error($e) {
 }
 
 /**
- * Obtener todos los productos activos
+ * Normaliza la ruta de imagen para un producto.
+ * - Si $img es URL (http/https) lo deja.
+ * - Si es ruta absoluta (empieza por /) y existe en server, la usa.
+ * - Si no existe, intenta buscar en /ProyectoAmbienteWebG1/public/images/<safe>.(jpg|png)
+ * - Si nada, devuelve placeholder.
+ */
+function normalizeProductImage($img, $nombre) {
+    $placeholder = '/ProyectoAmbienteWebG1/public/images/placeholder.png';
+    // Si viene una URL
+    if (!empty($img) && (strpos($img, 'http://') === 0 || strpos($img, 'https://') === 0)) {
+        return $img;
+    }
+    // Si es ruta absoluta en el sitio (ej: /assets/...)
+    if (!empty($img) && strpos($img, '/') === 0) {
+        $serverPath = $_SERVER['DOCUMENT_ROOT'] . $img;
+        if (file_exists($serverPath)) return $img;
+    }
+
+    // Construir nombre seguro a partir del nombre del producto
+    $safe = preg_replace('/[^a-z0-9_\\.]/i', '_', strtolower($nombre));
+    $candidateJpg = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.jpg';
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidateJpg)) return $candidateJpg;
+    $candidatePng = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.png';
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidatePng)) return $candidatePng;
+
+    // Si el campo $img no estaba vacío pero no existe en disco, devolver placeholder
+    return $placeholder;
+}
+
+/**
+ * Obtener todos los productos activos (normaliza imagen si está vacía)
  * @return array
  */
 function getAllProducts() {
@@ -28,6 +57,10 @@ function getAllProducts() {
                 ORDER BY categoria, nombre";
         $res = $conn->query($sql);
         while ($row = $res->fetch_assoc()) {
+            $row['precio'] = (float)$row['precio'];
+            $row['stock'] = (int)$row['stock'];
+            $row['es_equipo'] = (int)$row['es_equipo'];
+            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
         CloseConnection($conn);
@@ -51,6 +84,12 @@ function getProductById($id) {
         $row = $res->fetch_assoc();
         $stmt->close();
         CloseConnection($conn);
+        if ($row) {
+            $row['precio'] = (float)$row['precio'];
+            $row['stock'] = (int)$row['stock'];
+            $row['es_equipo'] = (int)$row['es_equipo'];
+            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+        }
         return $row ?: null;
     } catch (Exception $e) {
         product_log_error($e);
@@ -60,8 +99,7 @@ function getProductById($id) {
 
 /**
  * Crear producto
- * $data: assoc array con keys: nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo (0/1), activo (opc)
- * Retorna id insertado o false
+ * $data keys: nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo
  */
 function createProduct($data) {
     try {
@@ -97,7 +135,6 @@ function createProduct($data) {
 
 /**
  * Actualizar producto por id
- * $data: campos a actualizar (mismos keys que createProduct)
  */
 function updateProduct($id, $data) {
     $id = intval($id);
@@ -132,7 +169,7 @@ function updateProduct($id, $data) {
 }
 
 /**
- * Eliminar producto (soft delete: activo = 0)
+ * Eliminar producto (soft delete)
  */
 function deleteProduct($id) {
     $id = intval($id);
@@ -162,7 +199,13 @@ function searchProducts($term) {
         $stmt->bind_param("ssss", $t, $t, $t, $t);
         $stmt->execute();
         $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) $out[] = $row;
+        while ($row = $res->fetch_assoc()) {
+            $row['precio'] = (float)$row['precio'];
+            $row['stock'] = (int)$row['stock'];
+            $row['es_equipo'] = (int)$row['es_equipo'];
+            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $out[] = $row;
+        }
         $stmt->close();
         CloseConnection($conn);
     } catch (Exception $e) {
@@ -182,7 +225,10 @@ function getProductsByCategory($cat) {
         $stmt->bind_param("s", $cat);
         $stmt->execute();
         $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) $out[] = $row;
+        while ($row = $res->fetch_assoc()) {
+            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $out[] = $row;
+        }
         $stmt->close();
         CloseConnection($conn);
     } catch (Exception $e) {
@@ -201,7 +247,10 @@ function getEquipmentProducts() {
         $stmt = $conn->prepare("SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo FROM productos WHERE activo = 1 AND es_equipo = 1 ORDER BY nombre");
         $stmt->execute();
         $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) $out[] = $row;
+        while ($row = $res->fetch_assoc()) {
+            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $out[] = $row;
+        }
         $stmt->close();
         CloseConnection($conn);
     } catch (Exception $e) {
@@ -209,5 +258,4 @@ function getEquipmentProducts() {
     }
     return $out;
 }
-
 ?>

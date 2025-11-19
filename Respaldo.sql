@@ -4,7 +4,7 @@ USE `proyectoambienteweb`;
 -- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 -- Host: 127.0.0.1    Database: proyectoambienteweb
 -- ------------------------------------------------------
--- Server version 5.5.5-10.4.32-MariaDB
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -171,24 +171,51 @@ DELIMITER ;
 -- TABLE productos (tu tabla nueva)
 -- --------------------------------------
 
-CREATE TABLE productos (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(200) NOT NULL,
-  descripcion TEXT,
-  categoria VARCHAR(80),
-  precio DECIMAL(12,2) DEFAULT 0,
-  stock INT DEFAULT 0,
-  unidad VARCHAR(50),
-  proveedor VARCHAR(120),
-  imagen VARCHAR(255),
-  es_equipo TINYINT(1) DEFAULT 0,
-  activo TINYINT(1) DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `productos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(200) NOT NULL,
+  `descripcion` TEXT,
+  `categoria` VARCHAR(80),
+  `precio` DECIMAL(12,2) DEFAULT 0,
+  `stock` INT DEFAULT 0,
+  `unidad` VARCHAR(50),
+  `proveedor` VARCHAR(120),
+  `imagen` VARCHAR(255),
+  `es_equipo` TINYINT(1) DEFAULT 0,
+  `activo` TINYINT(1) DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO productos (nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo)
+INSERT INTO productos 
+(nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo)
 VALUES
-('Cerveza Imperial 24x355ml','Pack de 24 unidades - ideal para bares.','Licorera',45000,120,'pack','Cervecería Regional','https://via.placeholder.com/300x200?text=Cerveza',0),
-('Gaseosa Coca-Cola 2L','Botella 2 litros.','Supermercado',800,500,'unidad','Coca-Cola','https://via.placeholder.com/300x200?text=Coca-Cola',0),
-('Congelador Exhibidor 200L','Congelador vertical, renta o venta.','Mayoreo',650000,5,'unidad','Equipamientos JJ','https://via.placeholder.com/300x200?text=Congelador',1);
+('Cerveza Imperial 24x355ml',
+ 'Pack de 15 unidades - ideal para bares.',
+ 'Licorera',
+ 45000,
+ 120,
+ 'pack',
+ 'Cervecería Costa Rica',
+ 'imagenes/15packimperial.webp',
+ 0),
 
+('Gaseosa Coca-Cola 2L',
+ 'Botella de 2 litros para supermercados y ventas al detalle.',
+ 'Supermercado',
+ 800,
+ 500,
+ 'unidad',
+ 'Coca-Cola',
+ 'imagenes/CocaCola.webp',
+ 0),
+
+('Congelador Exhibidor 200L',
+ 'Congelador vertical para negocios — disponible para venta o alquiler.',
+ 'Mayoreo',
+ 650000,
+ 5,
+ 'unidad',
+ 'Equipamientos JJ',
+ 'imagenes/camara1.jpg',
+ 1);

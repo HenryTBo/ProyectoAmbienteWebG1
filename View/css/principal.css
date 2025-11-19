@@ -1,0 +1,186 @@
+/* ============================
+   RESET & BASE
+================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f7f8fa;
+    color: #333;
+}
+
+/* ============================
+   HERO SECTION
+================================ */
+.hero-section {
+    background: linear-gradient(to right, #ffffff, #f4f4f4);
+    padding: 60px 20px;
+}
+
+.hero-container {
+    max-width: 1250px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 40px;
+    align-items: center;
+}
+
+.hero-text h1 {
+    font-size: 40px;
+    font-weight: 700;
+    color: #222;
+    line-height: 1.2;
+}
+
+.hero-text .hero-sub {
+    font-size: 17px;
+    margin: 18px 0 28px;
+    color: #555;
+}
+
+.hero-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.hero-search input {
+    flex: 1;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.hero-search button {
+    background: #ff8c00;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.hero-benefits {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.benefit-item {
+    background: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+}
+
+.hero-image img {
+    width: 100%;
+    border-radius: 12px;
+}
+
+/* ============================
+   SECTIONS
+================================ */
+.section {
+    padding: 60px 20px;
+    max-width: 1250px;
+    margin: auto;
+}
+
+.section-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.section-subtitle {
+    font-size: 16px;
+    color: #777;
+}
+
+/* ============================
+   CATEGORÍAS
+================================ */
+.categories-grid {
+    margin-top: 35px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.category-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    text-align: center;
+    transition: .2s;
+    border: 1px solid #eee;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+}
+
+.category-card h3 {
+    font-size: 20px;
+    margin-top: 10px;
+}
+
+.cat-icon {
+    font-size: 40px;
+}
+
+/* ============================
+   DESTACADOS
+================================ */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.view-all {
+    color: #ff8c00;
+    font-weight: bold;
+}
+
+/* ============================
+   SERVICES
+================================ */
+.services-grid {
+    margin-top: 35px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+}
+
+.service-card {
+    padding: 25px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+/* ============================
+   CONTACTO
+================================ */
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+}
+
+.contact-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}

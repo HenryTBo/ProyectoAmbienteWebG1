@@ -1,0 +1,142 @@
+/* principalAdmin.css
+   Estilos para Panel Admin - Distribuidora JJ
+   Paleta: rojo principal (#b30000), amarillo (#ffd24d), verde oscuro (#0b3b2e)
+*/
+
+:root{
+  --jj-red: #b30000;
+  --jj-yellow: #ffd24d;
+  --jj-dark: #0b3b2e;
+  --muted: #6c757d;
+  --card-radius: 12px;
+  --glass: rgba(255,255,255,0.85);
+  --shadow-1: 0 6px 18px rgba(11,59,46,0.06);
+}
+
+html,body {
+  height: 100%;
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(180deg,#f5f7fa 0%, #eef2f7 100%);
+  color: #222;
+}
+
+/* Layout wrapper (compatible con sb-nav-fixed) */
+.sb-nav-fixed #layoutSidenav {
+  min-height: calc(100vh - 60px);
+}
+
+/* Page title / header */
+.page-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--jj-dark);
+  margin-bottom: 4px;
+}
+.page-sub { color: var(--muted); margin-bottom: 0.25rem; }
+
+/* BOTÓN principal: Ir a Productos */
+.btn-products {
+  background: linear-gradient(90deg,var(--jj-red), #990000);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: .5rem .9rem;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(179,0,0,0.08);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.btn-products:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.12); }
+
+/* Stat cards */
+.stat-card {
+  background: var(--glass);
+  border-radius: var(--card-radius);
+  padding: 18px;
+  box-shadow: var(--shadow-1);
+  border: 1px solid rgba(11,59,46,0.03);
+}
+.stat-title { color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+.stat-value { font-size: 1.55rem; font-weight: 800; color: var(--jj-red); }
+.stat-sub { color: #8c8f95; font-size: .82rem; margin-top: 6px; }
+
+/* Action cards */
+.action-card {
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-1);
+  background: #fff;
+  border: 1px solid rgba(11,59,46,0.03);
+}
+.action-card .card-body { padding: 18px; }
+.action-card h5 { margin-top: 0; color: var(--jj-dark); }
+
+/* Buttons outline */
+.btn-outline-primary {
+  color: var(--jj-red);
+  border: 1px solid var(--jj-red);
+  background: transparent;
+  border-radius: 8px;
+  padding: .45rem .7rem;
+  transition: all .12s ease;
+}
+.btn-outline-primary:hover {
+  color: #fff;
+  background: var(--jj-red);
+  border-color: var(--jj-red);
+  transform: translateY(-2px);
+}
+
+/* Cards genéricas */
+.card { border-radius: 12px; overflow: hidden; }
+.card .card-body { padding: 1rem; }
+
+/* Recent activity */
+#recentActivity { min-height: 80px; color: var(--muted); }
+
+/* Sidebar fallback (si usas el fallback inline) */
+.sidebar-fallback {
+  width: 220px;
+  background: #fff;
+  border-right: 1px solid rgba(0,0,0,0.04);
+  padding: 20px;
+}
+.sidebar-fallback h3 { margin-top: 0; color: var(--jj-dark); }
+.sidebar-fallback ul { list-style:none; padding:0; margin: 12px 0 0 0;}
+.sidebar-fallback li { margin-bottom: 8px; }
+.sidebar-fallback a { color: #333; text-decoration:none; padding: 6px 8px; display: block; border-radius:6px; }
+.sidebar-fallback a:hover { background: rgba(179,0,0,0.06); color: var(--jj-red); }
+
+/* Small helpers */
+.centrado { text-align:center; }
+.mb-1 { margin-bottom:.5rem; }
+
+/* Responsive tweaks */
+@media (max-width: 991px) {
+  .stat-value { font-size: 1.35rem; }
+  .page-title { font-size: 1.3rem; }
+}
+@media (max-width: 767px) {
+  .btn-products { padding: .45rem .6rem; font-size: .95rem; }
+  .stat-card { padding: 14px; }
+  .action-card .card-body { padding: 14px; }
+}
+
+/* Footer */
+.site-footer {
+  padding: 14px 18px;
+  background: transparent;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* Optional: utility for tiny badges */
+.badge-small {
+  display:inline-block;
+  padding: .25rem .45rem;
+  border-radius: 999px;
+  background: rgba(11,59,46,0.06);
+  color: var(--jj-dark);
+  font-weight:600;
+  font-size: .82rem;
+}
