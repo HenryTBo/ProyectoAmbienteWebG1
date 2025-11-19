@@ -219,3 +219,15 @@ VALUES
  'Equipamientos JJ',
  'imagenes/camara1.jpg',
  1);
+
+ UPDATE productos 
+SET imagen = 'https://walmartcr.vtexassets.com/arquivos/ids/901535-1200-900?v=638796945249100000&width=1200&height=900&aspect=true' 
+WHERE id = 1;
+
+UPDATE productos 
+SET imagen = 'https://walmartcr.vtexassets.com/arquivos/ids/954737-1200-900?v=638866434018730000&width=1200&height=900&aspect=true' 
+WHERE id = 2;
+
+UPDATE productos 
+SET imagen = 'https://refrisander.com/wp-content/uploads/2024/06/200-lt-02-1-768x768.jpg' 
+WHERE id = 3;
