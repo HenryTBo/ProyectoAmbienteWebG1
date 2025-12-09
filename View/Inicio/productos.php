@@ -13,7 +13,7 @@ if (!isset($_SESSION["ConsecutivoUsuario"])) {
 <head>
     <meta charset="UTF-8">
     <?php showCss(); ?>
-    <link href="/proyecto/ProyectoAmbienteWebG1/public/css/productos.css" rel="stylesheet">
+    <link href="../css/productos.css?v=1" rel="stylesheet">
 </head>
 
 <body class="sb-nav-fixed">
@@ -59,7 +59,7 @@ if (!isset($_SESSION["ConsecutivoUsuario"])) {
 
 <script>
 function loadProducts(filter = "") {
-    fetch("/proyecto/ProyectoAmbienteWebG1/Controller/ProductController.php?action=list")
+    fetch("../../Controller/ProductController.php?action=list")
         .then(r => r.json())
         .then(json => {
             const cont = document.getElementById("productList");
@@ -76,27 +76,23 @@ function loadProducts(filter = "") {
                     cont.innerHTML += `
                         <div class="col-md-4 mb-4">
                             <div class="product-card">
-
-                                <img src="${p.imagen}" class="product-img">
-
+                                <img src="${p.imagen}" alt="${p.nombre}" class="product-img">
                                 <div class="product-body">
                                     <span class="product-category">${p.categoria}</span>
                                     <h5 class="product-title">${p.nombre}</h5>
-
                                     <div class="product-price">₡${parseFloat(p.precio).toLocaleString()}</div>
                                     <div class="product-stock">Stock: ${p.stock}</div>
-
-                                    <div class="mt-3">
+                                    <div class="product-actions">
                                         <button class="btn-edit">Editar</button>
                                         <button class="btn-delete">Eliminar</button>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     `;
                 });
-        });
+        })
+        .catch(err => console.error("Error:", err));
 }
 
 document.getElementById("searchInput").addEventListener("input", e => {

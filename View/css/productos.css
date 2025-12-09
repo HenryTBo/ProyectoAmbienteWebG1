@@ -1,125 +1,90 @@
-/* productos.css
-   Estilo moderno para el catálogo de productos Distribuidora JJ
-   Paleta roja / amarilla / verde oscuro
-*/
-
-:root {
-    --jj-red: #b30000;
-    --jj-yellow: #ffd24d;
-    --jj-dark: #0b3b2e;
-    --gray: #6c757d;
-    --card-bg: #ffffff;
-    --shadow: 0 6px 18px rgba(0,0,0,0.08);
+#productList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
 }
 
-body {
-    background: #f7f8fa;
-    font-family: "Inter", sans-serif;
-    padding-bottom: 40px;
+#productList .col-md-4 {
+    width: 100%;
 }
 
-/* Título */
-.page-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--jj-dark);
-    margin-bottom: 6px;
-}
-
-.page-sub {
-    color: var(--gray);
-    margin-bottom: 20px;
-}
-
-/* Botón regresar */
-.btn-back {
-    background: var(--jj-red);
-    color: #fff;
-    border-radius: 8px;
-    padding: .45rem .9rem;
-    border: none;
-    font-weight: 600;
-    transition: all .15s ease;
-}
-
-.btn-back:hover {
-    background: #990000;
-    transform: translateY(-2px);
-}
-
-/* Barra de búsqueda */
-.search-bar input {
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    padding: 10px 14px;
-}
-
-/* Tarjetas */
 .product-card {
-    background: var(--card-bg);
+    background: #ffffff;
     border-radius: 12px;
-    box-shadow: var(--shadow);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.12);
     overflow: hidden;
-    transition: transform .15s ease, box-shadow .15s ease;
-}
-
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    height: 380px;
+    display: flex;
+    flex-direction: column;
 }
 
 .product-img {
     width: 100%;
     height: 180px;
-    object-fit: cover;
-    background: #eee;
+    object-fit: contain;
+    background-color: #ffffff;
+    padding: 10px;
+    display: block;
 }
 
 .product-body {
-    padding: 16px;
-}
-
-.product-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--jj-dark);
-    margin-bottom: 4px;
+    padding: 12px 14px;
 }
 
 .product-category {
     display: inline-block;
-    font-size: .78rem;
+    font-size: 0.75rem;
     padding: 3px 8px;
-    border-radius: 6px;
-    background: rgba(179,0,0,0.08);
-    color: var(--jj-red);
-    margin-bottom: 10px;
+    border-radius: 5px;
+    background: rgba(179,0,0,0.12);
+    color: #b30000;
+    margin-bottom: 6px;
+}
+
+.product-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #222;
+    margin: 3px 0;
+    line-height: 1.2rem;
+    height: 38px;
+    overflow: hidden;
 }
 
 .product-price {
     font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--jj-red);
+    font-weight: bold;
+    color: #b30000;
+    margin-top: 4px;
 }
 
 .product-stock {
-    font-size: .85rem;
-    color: var(--gray);
+    font-size: 0.85rem;
+    color: #6c757d;
 }
 
-/* Botones CRUD */
-.btn-edit {
-    background: var(--jj-yellow);
-    border: none;
-    font-weight: 600;
-    padding: 6px 10px;
+.product-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit,
+.btn-delete {
+    padding: 4px 10px;
+    font-size: 0.8rem;
     border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-edit {
+    background: #ffd24d;
+    font-weight: 600;
 }
 
 .btn-delete {
     background: #b30000;
     color: #fff;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
+    font-weight: 600;
 }

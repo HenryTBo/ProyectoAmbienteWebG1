@@ -87,6 +87,7 @@ BEGIN
 	WHERE ConsecutivoUsuario = pConsecutivoUsuario;
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `ActualizarPerfil`(
 	pConsecutivoUsuario int(11), 
 	pIdentificacion varchar(15),
@@ -101,6 +102,7 @@ BEGIN
 	WHERE ConsecutivoUsuario = pConsecutivoUsuario;
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `ConsultarUsuario`(
 	pConsecutivoUsuario int(11)
 )
@@ -111,6 +113,7 @@ BEGIN
 	WHERE ConsecutivoUsuario = pConsecutivoUsuario;
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `CrearCuenta`(
 	pIdentificacion varchar(15), 
 	pNombre varchar(255),
@@ -134,6 +137,7 @@ BEGIN
 	END IF;
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `RegistrarError`(
 	pMensaje varchar(8000)
 )
@@ -142,6 +146,7 @@ BEGIN
 	VALUES (pMensaje, NOW());
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `ValidarCorreo`(
 	pCorreoElectronico varchar(100)
 )
@@ -152,6 +157,7 @@ BEGIN
 	  AND Estado = 1;
 END ;;
 
+DELIMITER ;;
 CREATE PROCEDURE `ValidarCuenta`(
 	pCorreoElectronico varchar(100),
 	pContrasenna varchar(10)
@@ -167,67 +173,69 @@ END ;;
 
 DELIMITER ;
 
--- --------------------------------------
--- TABLE productos (tu tabla nueva)
--- --------------------------------------
+-- ======================================
+-- TABLE productos
+-- ======================================
+DROP TABLE IF EXISTS `productos`;
+CREATE TABLE productos (
+  id INT NOT NULL AUTO_INCREMENT,
+  nombre VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  categoria VARCHAR(80),
+  precio DECIMAL(12,2) DEFAULT 0,
+  stock INT DEFAULT 0,
+  unidad VARCHAR(50),
+  proveedor VARCHAR(120),
+  imagen VARCHAR(255),
+  es_equipo TINYINT(1) DEFAULT 0,
+  activo TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);
 
-CREATE TABLE `productos` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nombre` VARCHAR(200) NOT NULL,
-  `descripcion` TEXT,
-  `categoria` VARCHAR(80),
-  `precio` DECIMAL(12,2) DEFAULT 0,
-  `stock` INT DEFAULT 0,
-  `unidad` VARCHAR(50),
-  `proveedor` VARCHAR(120),
-  `imagen` VARCHAR(255),
-  `es_equipo` TINYINT(1) DEFAULT 0,
-  `activo` TINYINT(1) DEFAULT 1,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO productos 
-(nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo)
-VALUES
-('Cerveza Imperial 24x355ml',
- 'Pack de 15 unidades - ideal para bares.',
- 'Licorera',
- 45000,
- 120,
- 'pack',
- 'Cervecería Costa Rica',
- 'imagenes/15packimperial.webp',
- 0),
+-- ======================================
+-- INSERTAR PRODUCTOS NUEVOS
+-- ======================================
+INSERT INTO productos (nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo) VALUES
+('Cerveza Heineken Original Lata 6 pack - 2130 ml','6 unidades de lata — Importada — 5% Alcohol', 'Licorera', 5680, 35, 'pack', 'Heineken', 'https://walmartcr.vtexassets.com/arquivos/ids/901239-800-600?v=638796936110470000&width=800&height=600&aspect=true', 0, 1),
 
-('Gaseosa Coca-Cola 2L',
- 'Botella de 2 litros para supermercados y ventas al detalle.',
- 'Supermercado',
- 800,
- 500,
- 'unidad',
- 'Coca-Cola',
- 'imagenes/CocaCola.webp',
- 0),
+(', 6 Pack Lata - 350ml',
+ '6 unidades — Marca Nacional — Estilo Lager',
+ 'Licorera', 5200, 50, 'pack', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/902606-800-600?v=638796984170130000&width=800&height=600&aspect=true', 0, 1),
 
-('Congelador Exhibidor 200L',
- 'Congelador vertical para negocios — disponible para venta o alquiler.',
- 'Mayoreo',
- 650000,
- 5,
- 'unidad',
- 'Equipamientos JJ',
- 'imagenes/camara1.jpg',
- 1);
+('Cerveza Natural Light 6 pack - 355 ml',
+ 'Ligera — Baja en calorías — 6 unidades',
+ 'Licorera', 2900, 38, 'pack', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/717991-800-600?v=638624752312870000&width=800&height=600&aspect=true', 0, 1),
 
- UPDATE productos 
-SET imagen = 'https://walmartcr.vtexassets.com/arquivos/ids/901535-1200-900?v=638796945249100000&width=1200&height=900&aspect=true' 
-WHERE id = 1;
+('15 Pack Cerveza Pilsen Lata - 350ml',
+ 'Pack ahorro — 15 unidades — Lager clásica',
+ 'Licorera', 9800, 22, 'pack', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/902423-800-600?v=638796978172730000&width=800&height=600&aspect=true', 0, 1),
 
-UPDATE productos 
-SET imagen = 'https://walmartcr.vtexassets.com/arquivos/ids/954737-1200-900?v=638866434018730000&width=1200&height=900&aspect=true' 
-WHERE id = 2;
+('Cerveza Cezka Lager 4% Alcohol 24 Pack - 7920ml',
+ '24 botellas — 4% Alcohol — Ahorro',
+ 'Licorera', 8000, 20, 'pack', 'Cezka', 'https://walmartcr.vtexassets.com/arquivos/ids/436187-800-600?v=638284557739270000&width=800&height=600&aspect=true', 0, 1),
 
-UPDATE productos 
-SET imagen = 'https://refrisander.com/wp-content/uploads/2024/06/200-lt-02-1-768x768.jpg' 
-WHERE id = 3;
+('Cerveza Sol Vidrio - 330 ml',
+ '100% Mexicana — Botella de vidrio',
+ 'Licorera', 1050, 60, 'unidad', 'Sol', 'https://walmartcr.vtexassets.com/arquivos/ids/975976-800-600?v=638899242375770000&width=800&height=600&aspect=true', 0, 1),
+
+('Cerveza Imperial Original Lata 4Pack - 473 ml c/u',
+ 'Imperial regular — Pack de 4 — Lager',
+ 'Licorera', 4140, 55, 'pack', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/901932-800-600?v=638796957318270000&width=800&height=600&aspect=true', 0, 1),
+
+('Cerveza Bohemia en lata 6 Pack - 2100 ml',
+ 'Pack de 6 — Cerveza Nacional',
+ 'Licorera', 3100, 32, 'pack', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/901262-800-600?v=638796936214200000&width=800&height=600&aspect=true', 0, 1),
+
+('Cerveza Corona Extra Botella - 355ml',
+ 'Mexicana Premium — Botella individual',
+ 'Licorera', 1200, 45, 'unidad', 'Corona', 'https://walmartcr.vtexassets.com/arquivos/ids/1020886-800-600?v=638985672026930000&width=800&height=600&aspect=true', 0, 1),
+
+('Cerveza Imperial Michelada Mango Verde Limón y Sal - 350 ml',
+ 'Michelada lista para tomar — Sabor Mango Verde',
+ 'Licorera', 920, 70, 'unidad', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/891775-800-600?v=638816249217100000&width=800&height=600&aspect=true', 0, 1),
+
+('Cerveza Imperial Michelada Verde Limón y Sal - 350 ml',
+ 'Cerveza con sabor limón — Tipo michelada',
+ 'Licorera', 920, 65, 'unidad', 'Cervecería Costa Rica', 'https://walmartcr.vtexassets.com/arquivos/ids/891833-800-600?v=638816245902900000&width=800&height=600&aspect=true', 0, 1);
