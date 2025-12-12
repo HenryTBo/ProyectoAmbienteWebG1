@@ -65,6 +65,24 @@ try {
                 'activo' => 1
             ];
 
+            // Si se subió una imagen de archivo, guardarla en la carpeta imagenes y utilizarla como imagen
+            if (isset($_FILES['imagenFile']) && is_array($_FILES['imagenFile']) && $_FILES['imagenFile']['error'] === UPLOAD_ERR_OK) {
+                $tmpName = $_FILES['imagenFile']['tmp_name'];
+                $origName = $_FILES['imagenFile']['name'];
+                $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                $allowed = ['jpg','jpeg','png','gif','webp'];
+                if (in_array($ext, $allowed)) {
+                    $newName = uniqid('prod_', true) . '.' . $ext;
+                    $destDir = dirname(__DIR__) . '/imagenes/';
+                    if (!is_dir($destDir)) {
+                        mkdir($destDir, 0775, true);
+                    }
+                    if (move_uploaded_file($tmpName, $destDir . $newName)) {
+                        $data['imagen'] = 'imagenes/' . $newName;
+                    }
+                }
+            }
+
             if (trim($data['nombre']) === '')
                 throw new Exception("Nombre requerido");
 
@@ -97,6 +115,24 @@ try {
                 'es_equipo' => isset($_POST['es_equipo']) ? intval($_POST['es_equipo']) : 0,
                 'activo' => isset($_POST['activo']) ? intval($_POST['activo']) : 1
             ];
+
+            // Si se cargó una nueva imagen de archivo, subirla y reemplazar la existente
+            if (isset($_FILES['imagenFile']) && is_array($_FILES['imagenFile']) && $_FILES['imagenFile']['error'] === UPLOAD_ERR_OK) {
+                $tmpName = $_FILES['imagenFile']['tmp_name'];
+                $origName = $_FILES['imagenFile']['name'];
+                $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                $allowed = ['jpg','jpeg','png','gif','webp'];
+                if (in_array($ext, $allowed)) {
+                    $newName = uniqid('prod_', true) . '.' . $ext;
+                    $destDir = dirname(__DIR__) . '/imagenes/';
+                    if (!is_dir($destDir)) {
+                        mkdir($destDir, 0775, true);
+                    }
+                    if (move_uploaded_file($tmpName, $destDir . $newName)) {
+                        $data['imagen'] = 'imagenes/' . $newName;
+                    }
+                }
+            }
 
             $ok = updateProduct($id, $data);
             if (!$ok) throw new Exception("No se pudo actualizar");

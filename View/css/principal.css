@@ -1,6 +1,28 @@
-/* ============================
-   RESET & BASE
-================================ */
+/*
+    Estilos para la página principal (inicio) de Distribuidora JJ
+    Usamos la paleta de colores definida en la referencia:
+    - Oro:           #D9A441
+    - Oro oscuro:    #A97823
+    - Azul profundo: #18354A
+    - Rojo cálido:   #B02A2E
+    - Crema claro:   #F1E8D8
+    - Sombra:        #302621
+
+    Este archivo se incluye en View/Inicio/Principal.php mediante
+    <link href="../css/principal.css" rel="stylesheet" />
+*/
+
+/* Variables de colores */
+:root {
+    --jj-gold: #D9A441;
+    --jj-gold-dark: #A97823;
+    --jj-blue: #18354A;
+    --jj-red: #B02A2E;
+    --jj-cream: #F1E8D8;
+    --jj-graphite: #302621;
+}
+
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -9,88 +31,164 @@
 
 body {
     font-family: 'Poppins', sans-serif;
-    background: #f7f8fa;
-    color: #333;
+    background: var(--jj-cream);
+    color: var(--jj-graphite);
+    line-height: 1.5;
 }
 
-/* ============================
-   HERO SECTION
-================================ */
+/* HERO SECTION */
+/* Hero con degradado y logo translucido de fondo */
 .hero-section {
-    background: linear-gradient(to right, #ffffff, #f4f4f4);
-    padding: 60px 20px;
+    background: linear-gradient(135deg, var(--jj-blue) 0%, var(--jj-red) 50%, var(--jj-gold-dark) 100%);
+    padding: 80px 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Logo corporativo como marca de agua en la hero */
+.hero-section::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    /* Ampliamos el tamaño del logo de fondo para que sea más visible */
+    width: 600px;
+    height: 600px;
+    background-image: url("../img/Logo_Empresa.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    /* Aumentamos la opacidad del logo para que se perciba más, pero sin
+       interferir con la legibilidad del texto */
+    opacity: 0.10;
+    pointer-events: none;
 }
 
 .hero-container {
-    max-width: 1250px;
+    max-width: 1200px;
     margin: auto;
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 40px;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
 }
 
 .hero-text h1 {
-    font-size: 40px;
+    font-size: 42px;
     font-weight: 700;
-    color: #222;
-    line-height: 1.2;
+    margin-bottom: 15px;
 }
 
 .hero-text .hero-sub {
-    font-size: 17px;
-    margin: 18px 0 28px;
-    color: #555;
+    font-size: 18px;
+    margin-bottom: 35px;
+    color: var(--jj-cream);
+    max-width: 650px;
 }
 
 .hero-search {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    max-width: 600px;
 }
 
 .hero-search input {
     flex: 1;
-    padding: 12px 15px;
+    padding: 12px 16px;
     border-radius: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--jj-gold);
+    font-size: 15px;
 }
 
 .hero-search button {
-    background: #ff8c00;
-    color: white;
     padding: 12px 20px;
     border: none;
     border-radius: 8px;
+    background: var(--jj-gold);
+    color: var(--jj-graphite);
     font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.hero-search button:hover {
+    background: var(--jj-gold-dark);
 }
 
 .hero-benefits {
-    margin-top: 20px;
     display: flex;
-    gap: 15px;
     flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* Botón de carrito en la hero section */
+.hero-cart {
+    margin-top: 25px;
+}
+.hero-cart button {
+    background-color: transparent;
+    border: 1px solid var(--jj-gold);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color .2s, color .2s;
+}
+.hero-cart button:hover {
+    background-color: var(--jj-gold);
+    color: var(--jj-blue);
+}
+
+/* Botón flotante de carrito que aparece en la esquina inferior derecha */
+.floating-cart-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    background-color: var(--jj-gold);
+    color: var(--jj-blue);
+    border: none;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.floating-cart-btn:hover {
+    transform: scale(1.05);
+}
+.floating-cart-btn .badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: var(--jj-red);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 50%;
+    padding: 2px 6px;
 }
 
 .benefit-item {
-    background: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 14px;
+    border-radius: 20px;
     font-size: 14px;
+    display: flex;
+    align-items: center;
 }
 
-.hero-image img {
-    width: 100%;
-    border-radius: 12px;
-}
-
-/* ============================
-   SECTIONS
-================================ */
+/* SECTION GENERIC */
 .section {
     padding: 60px 20px;
-    max-width: 1250px;
+    max-width: 1200px;
     margin: auto;
 }
 
@@ -98,30 +196,36 @@ body {
     font-size: 28px;
     font-weight: 700;
     margin-bottom: 8px;
+    color: var(--jj-blue);
 }
 
 .section-subtitle {
     font-size: 16px;
-    color: #777;
+    color: var(--jj-graphite);
+    margin-bottom: 30px;
 }
 
-/* ============================
-   CATEGORÍAS
-================================ */
+/* CATEGORÍAS PRINCIPALES */
 .categories-grid {
-    margin-top: 35px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
 }
 
 .category-card {
-    background: white;
+    background: #fff;
     padding: 25px;
+    border: 2px solid var(--jj-gold);
     border-radius: 12px;
     text-align: center;
-    transition: .2s;
-    border: 1px solid #eee;
+    color: var(--jj-graphite);
+    transition: transform .2s, box-shadow .2s;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
 }
 
 .category-card:hover {
@@ -131,56 +235,187 @@ body {
 
 .category-card h3 {
     font-size: 20px;
-    margin-top: 10px;
+    margin-top: 12px;
+    color: var(--jj-blue);
 }
 
 .cat-icon {
-    font-size: 40px;
+    font-size: 36px;
 }
 
-/* ============================
-   DESTACADOS
-================================ */
+/* PRODUCTOS DESTACADOS */
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    margin-bottom: 25px;
 }
 
 .view-all {
-    color: #ff8c00;
-    font-weight: bold;
+    color: var(--jj-red);
+    font-weight: 600;
+    text-decoration: none;
 }
 
-/* ============================
-   SERVICES
-================================ */
-.services-grid {
-    margin-top: 35px;
+.view-all:hover {
+    color: var(--jj-blue);
+}
+
+.products-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.pc-thumb img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.pc-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.pc-meta .pc-cat {
+    font-size: 13px;
+    color: var(--jj-red);
+}
+
+.pc-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 4px 0 8px;
+    color: var(--jj-blue);
+}
+
+.pc-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pc-price {
+    font-weight: 700;
+    color: var(--jj-gold);
+}
+
+.pc-actions .btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.pc-actions .btn-sm {
+    background: var(--jj-blue);
+    color: #fff;
+    border: none;
+    margin-right: 5px;
+}
+
+.pc-actions .btn-sm.btn-ghost {
+    background: transparent;
+    color: var(--jj-blue);
+    border: 1px solid var(--jj-blue);
+}
+
+.pc-actions .btn-sm.btn-ghost:hover {
+    background: var(--jj-blue);
+    color: #fff;
+}
+
+/* SERVICES */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
 }
 
 .service-card {
-    padding: 25px;
-    background: white;
-    border-radius: 12px;
+    background: #fff;
     border: 1px solid #eee;
+    border-left: 5px solid var(--jj-gold);
+    border-radius: 12px;
+    padding: 20px;
+    transition: box-shadow .2s;
 }
 
-/* ============================
-   CONTACTO
-================================ */
+.service-card:hover {
+    box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+}
+
+.service-card h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--jj-red);
+}
+
+.service-card p {
+    color: var(--jj-graphite);
+    font-size: 15px;
+}
+
+/* CONTACT GRID */
 .contact-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
 }
 
 .contact-card {
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
+    background: #fff;
     border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.contact-card h4 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--jj-blue);
+}
+
+.contact-card p a {
+    color: var(--jj-red);
+    text-decoration: none;
+}
+
+.contact-card p a:hover {
+    text-decoration: underline;
+}
+
+/* TOAST (pequeño mensaje) */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--jj-blue);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity .3s, transform .3s;
+    z-index: 10000;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translateY(0);
 }

@@ -1,0 +1,94 @@
+/* Estilos específicos para la vista de empleados */
+@import url('productos.css');
+
+/* Reaprovechamos la paleta y estilos base de productos.css
+   importándolo arriba. Aquí agregamos sólo lo necesario para
+   adaptar las tarjetas de empleados. */
+
+/*
+    Diseño para el listado de empleados
+    Se usa flexbox en lugar de grid para que las tarjetas se adapten al ancho disponible
+*/
+/*
+ * Contenedor de la lista de empleados
+ * Usamos flexbox para permitir un número flexible de tarjetas por fila.
+ * Cada tarjeta tomará al menos 280px y crecerá hasta rellenar el espacio disponible.
+ */
+#employeeList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: stretch;
+}
+
+/* Tarjeta del empleado
+   Removemos la altura fija para permitir que el texto se acomode naturalmente.
+   Ajustamos padding y ancho máximo para mejorar la legibilidad de nombres largos.
+*/
+/*
+ * Tarjeta de empleado
+ * Quitamos el ancho máximo para que se adapte mejor a distintas resoluciones y
+ * aumentamos el tamaño mínimo para que nombres largos no queden apretados.
+ */
+.employee-card {
+    background: var(--jj-cream-light);
+    border-radius: 12px;
+    border: 1px solid var(--jj-gold-dark);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+    flex: 1 1 280px;
+    min-width: 260px;
+    min-height: 200px;
+}
+
+/* Ajustamos tipografías para que los nombres se lean mejor */
+.employee-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--jj-blue-deep);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.employee-position {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--jj-red-warm);
+    margin-top: 6px;
+    text-transform: capitalize;
+}
+
+.employee-salary {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--jj-blue-deep);
+    margin-top: 8px;
+}
+
+.employee-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.employee-actions .btn-outline-primary {
+    color: var(--jj-blue-deep);
+    border-color: var(--jj-blue-deep);
+    font-size: 0.85rem;
+}
+.employee-actions .btn-outline-primary:hover {
+    background: var(--jj-blue-deep);
+    color: #fff;
+}
+.employee-actions .btn-outline-danger {
+    color: var(--jj-red-warm);
+    border-color: var(--jj-red-warm);
+    font-size: 0.85rem;
+}
+.employee-actions .btn-outline-danger:hover {
+    background: var(--jj-red-warm);
+    color: #fff;
+}

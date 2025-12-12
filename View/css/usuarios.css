@@ -1,0 +1,25 @@
+/* Estilos para la administración de cuentas de usuario */
+@import url('productos.css');
+
+/* La tabla usa la paleta JJ para la cabecera */
+#usuariosTable thead.table-dark {
+    background-color: var(--jj-blue-deep);
+    color: var(--jj-cream-light);
+}
+
+#usuariosTable tbody tr:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+
+.role-select {
+    min-width: 140px;
+}
+
+.btn-outline-primary {
+    color: var(--jj-blue-deep);
+    border-color: var(--jj-blue-deep);
+}
+.btn-outline-primary:hover {
+    background: var(--jj-blue-deep);
+    color: #fff;
+}

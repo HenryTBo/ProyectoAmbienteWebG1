@@ -6,9 +6,9 @@
 
         $host = "127.0.0.1";
         $user = "root";
-        $pass = "";                       
+        $pass = "dannyJP_2021";                       
         $db   = "proyectoambienteweb";    
-        $port = 3307;  // cambiar si lo tienen en distinto puerto :)
+        $port = 3306;  // cambiar si lo tienen en distinto puerto :)
 
         $conn = mysqli_connect($host, $user, $pass, $db, $port);
 

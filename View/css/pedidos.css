@@ -1,0 +1,41 @@
+/* Estilos para la gestión y creación de pedidos */
+@import url('productos.css');
+
+/* Cabecera de las tablas de pedidos */
+#pedidosTable thead.table-dark,
+#orderItemsTable thead.table-dark {
+    background-color: var(--jj-blue-deep);
+    color: var(--jj-cream-light);
+}
+
+/* Hover sobre filas */
+table tbody tr:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+/* Precio y subtotal en la creación de pedidos */
+.product-price,
+.sub-total {
+    display: inline-block;
+    min-width: 80px;
+}
+
+/* Botón para eliminar una fila de pedido */
+.btn-remove {
+    color: var(--jj-red-warm);
+    border-color: var(--jj-red-warm);
+}
+.btn-remove:hover {
+    background-color: var(--jj-red-warm);
+    color: #fff;
+}
+
+/* Ajustes al botón principal de pedido */
+.btn-primary {
+    background-color: var(--jj-blue-deep);
+    border-color: var(--jj-blue-deep);
+}
+.btn-primary:hover {
+    background-color: var(--jj-gold-dark);
+    border-color: var(--jj-gold-dark);
+}

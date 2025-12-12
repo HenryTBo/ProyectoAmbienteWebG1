@@ -24,27 +24,65 @@ function showCss() {
         <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
 
         <style>
+            /*
+             * Paleta de colores corporativos de Distribuidora JJ
+             * Utiliza variables CSS para permitir cambios centralizados
+             */
+            :root {
+                --jj-gold:        #D9A441;
+                --jj-gold-dark:   #A97823;
+                --jj-blue-deep:   #18354A;
+                --jj-red-warm:    #B02A2E;
+                --jj-cream-light: #F1E8D8;
+                --jj-graphite:    #302621;
+            }
+
             .marca-titulo {
                 font-weight: 600;
-                font-size: 18px;
+                font-size: 20px;
                 letter-spacing: 0.5px;
                 font-family: Poppins, sans-serif;
+                color: var(--jj-gold);
             }
+
+            /* Barra de navegación superior */
+            .sb-topnav.navbar-dark {
+                /* Barra semi-transparente para mayor elegancia */
+                background-color: rgba(24, 53, 74, 0.9) !important;
+            }
+            .sb-topnav .navbar-brand,
+            .sb-topnav .navbar-nav .nav-link,
+            .sb-topnav .navbar-nav .dropdown-item {
+                color: var(--jj-cream-light) !important;
+            }
+            .sb-topnav .navbar-brand img {
+                /* Aumentamos aún más el tamaño del logo para mayor presencia */
+                height: 100px;
+                width: auto;
+                margin-right: 12px;
+            }
+
+            /* Sidebar */
             .sb-sidenav-dark {
-                background: #1f1f1f !important;
+                background-color: var(--jj-blue-deep) !important;
             }
             .sb-sidenav-footer {
-                background: #101010 !important;
-                color: #ddd;
+                background-color: var(--jj-blue-deep) !important;
+                color: var(--jj-cream-light);
             }
             .sb-sidenav-menu-heading {
-                color: #bbb !important;
+                color: var(--jj-gold-dark) !important;
+                font-weight: 700;
             }
             .sb-nav-link-icon {
-                color: #f39c12 !important;
+                color: var(--jj-gold) !important;
+            }
+            .nav-link {
+                color: var(--jj-cream-light) !important;
             }
             .nav-link.active {
-                background-color: #343a40 !important;
+                background-color: var(--jj-gold-dark) !important;
+                color: var(--jj-cream-light) !important;
                 font-weight: 600;
             }
         </style>
@@ -68,7 +106,8 @@ function showNavBar() {
 
             <!-- Marca -->
             <a class="navbar-brand ps-3 marca-titulo" href="../Inicio/Principal.php">
-                <img src="../img/Logo_Empresa.jpg" alt="Logo" style="height:32px; width:auto; margin-right:10px;">
+                <!-- Logo ampliado: el tamaño ahora se controla vía CSS (48px de altura) -->
+                <img src="../img/Logo_Empresa.png" alt="Logo" class="logo-navbar" />
                 Distribuidora J.J
             </a>
 
@@ -106,36 +145,66 @@ function showNavBar() {
 
 /* ---------------- SIDEBAR ---------------- */
 function showSideBar() {
-    echo '
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+    echo '<div id="layoutSidenav_nav">';
+    echo '<nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">';
+    echo '<div class="sb-sidenav-menu">';
+    echo '<div class="nav">';
+    echo '<div class="sb-sidenav-menu-heading">Menú</div>';
 
-                <div class="sb-sidenav-menu">
-                    <div class="nav">
+    // Enlace Inicio
+    echo '<a class="nav-link" href="../Inicio/Principal.php">';
+    echo '<div class="sb-nav-link-icon"><i class="fas fa-home"></i></div>';
+    echo 'Inicio';
+    echo '</a>';
 
-                        <div class="sb-sidenav-menu-heading">Menú</div>
+    // Enlace Productos
+    echo '<a class="nav-link" href="../Inicio/productos.php">';
+    echo '<div class="sb-nav-link-icon"><i class="fas fa-box"></i></div>';
+    echo 'Productos';
+    echo '</a>';
 
-                        <a class="nav-link" href="Principal.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-home"></i></div>
-                            Inicio
-                        </a>
+    // Si el usuario es administrador (perfil 1), mostrar enlaces de gestión
+    if (isset($_SESSION['ConsecutivoPerfil']) && $_SESSION['ConsecutivoPerfil'] == '1') {
+        // Gestión de cuentas de usuario
+        echo '<a class="nav-link" href="../Inicio/usuarios.php">';
+        echo '<div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>';
+        echo 'Cuentas';
+        echo '</a>';
+        // Gestión de empleados
+        echo '<a class="nav-link" href="../Inicio/empleados.php">';
+        echo '<div class="sb-nav-link-icon"><i class="fas fa-user-friends"></i></div>';
+        echo 'Empleados';
+        echo '</a>';
+        // Gestión de pedidos
+        echo '<a class="nav-link" href="../Inicio/gestionPedidos.php">';
+        echo '<div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>';
+        echo 'Pedidos';
+        echo '</a>';
+    } else {
+        // Si no es administrador, mostrar enlaces de cliente
+        // Mis pedidos
+        echo '<a class="nav-link" href="../Inicio/misPedidos.php">';
+        echo '<div class="sb-nav-link-icon"><i class="fas fa-shopping-bag"></i></div>';
+        echo 'Mis pedidos';
+        echo '</a>';
+        // Carrito
+        echo '<a class="nav-link" href="../Inicio/carrito.php">';
+        echo '<div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>';
+        echo 'Carrito';
+        echo '</a>';
+    }
 
-                        <a class="nav-link" href="productos.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-box"></i></div>
-                            Productos
-                        </a>
+    echo '</div>'; // .nav
+    echo '</div>'; // .sb-sidenav-menu
 
-                    </div>
-                </div>
+    // Footer con nombre de usuario
+    echo '<div class="sb-sidenav-footer text-center">';
+    echo '<div class="small">Sesión iniciada como:</div>';
+    echo '<strong>' . htmlspecialchars($_SESSION['Nombre']) . '</strong>';
+    echo '</div>';
 
-                <div class="sb-sidenav-footer text-center">
-                    <div class="small">Sesión iniciada como:</div>
-                    <strong>' . $_SESSION["Nombre"] . '</strong>
-                </div>
-
-            </nav>
-        </div>
-    ';
+    echo '</nav>';
+    echo '</div>';
 }
 
 /* ---------------- FOOTER ---------------- */

@@ -1,3 +1,14 @@
+/* Paleta de colores corporativa JJ */
+:root {
+    --jj-gold: #D9A441;
+    --jj-gold-dark: #A97823;
+    --jj-blue-deep: #18354A;
+    --jj-red-warm: #B02A2E;
+    --jj-cream-light: #F1E8D8;
+    --jj-graphite-shadow: #302621;
+}
+
+/* Grid de productos */
 #productList {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -8,19 +19,21 @@
     width: 100%;
 }
 
+/* Tarjeta del producto */
 .product-card {
-    background: #ffffff;
+    background: var(--jj-cream-light);
     border-radius: 12px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.12);
+    box-shadow: 0px 6px 12px rgba(0,0,0,0.1);
     overflow: hidden;
-    height: 380px;
+    height: 400px;
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--jj-gold-dark);
 }
 
 .product-img {
     width: 100%;
-    height: 180px;
+    height: 190px;
     object-fit: contain;
     background-color: #ffffff;
     padding: 10px;
@@ -33,34 +46,34 @@
 
 .product-category {
     display: inline-block;
-    font-size: 0.75rem;
-    padding: 3px 8px;
+    font-size: 0.7rem;
+    padding: 4px 10px;
     border-radius: 5px;
-    background: rgba(179,0,0,0.12);
-    color: #b30000;
+    background: var(--jj-red-warm);
+    color: #fff;
     margin-bottom: 6px;
 }
 
 .product-title {
     font-size: 1rem;
     font-weight: 700;
-    color: #222;
+    color: var(--jj-blue-deep);
     margin: 3px 0;
-    line-height: 1.2rem;
-    height: 38px;
+    line-height: 1.25rem;
+    height: 40px;
     overflow: hidden;
 }
 
 .product-price {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: bold;
-    color: #b30000;
+    color: var(--jj-blue-deep);
     margin-top: 4px;
 }
 
 .product-stock {
     font-size: 0.85rem;
-    color: #6c757d;
+    color: var(--jj-graphite-shadow);
 }
 
 .product-actions {
@@ -69,22 +82,31 @@
     gap: 8px;
 }
 
-.btn-edit,
-.btn-delete {
-    padding: 4px 10px;
-    font-size: 0.8rem;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
+/* Botones outline para acciones (respetan paleta) */
+.product-actions .btn-outline-primary {
+    color: var(--jj-blue-deep);
+    border-color: var(--jj-blue-deep);
 }
-
-.btn-edit {
-    background: #ffd24d;
-    font-weight: 600;
-}
-
-.btn-delete {
-    background: #b30000;
+.product-actions .btn-outline-primary:hover {
+    background: var(--jj-blue-deep);
     color: #fff;
-    font-weight: 600;
+}
+
+.product-actions .btn-outline-danger {
+    color: var(--jj-red-warm);
+    border-color: var(--jj-red-warm);
+}
+.product-actions .btn-outline-danger:hover {
+    background: var(--jj-red-warm);
+    color: #fff;
+}
+
+/* Color base para botones primarios */
+.btn-primary {
+    background: var(--jj-blue-deep);
+    border-color: var(--jj-blue-deep);
+}
+.btn-primary:hover {
+    background: var(--jj-gold-dark);
+    border-color: var(--jj-gold-dark);
 }

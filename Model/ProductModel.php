@@ -7,6 +7,9 @@ if (!file_exists(__DIR__ . '/ConexionModel.php')) {
 }
 include_once __DIR__ . '/ConexionModel.php';
 
+/**
+ * Registra un error en tberror usando SaveError si está disponible.
+ */
 function product_log_error($e) {
     if (function_exists('SaveError')) {
         try { SaveError($e); } catch (Exception $ex) { /* ignore */ }
@@ -33,7 +36,7 @@ function normalizeProductImage($img, $nombre) {
     }
 
     // Construir nombre seguro a partir del nombre del producto
-    $safe = preg_replace('/[^a-z0-9_\\.]/i', '_', strtolower($nombre));
+    $safe = preg_replace('/[^a-z0-9_\.]/i', '_', strtolower($nombre));
     $candidateJpg = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.jpg';
     if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidateJpg)) return $candidateJpg;
     $candidatePng = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.png';
@@ -44,25 +47,25 @@ function normalizeProductImage($img, $nombre) {
 }
 
 /**
- * Obtener todos los productos activos (normaliza imagen si está vacía)
+ * Lista todos los productos activos utilizando procedimiento almacenado.
  * @return array
  */
 function getAllProducts() {
     $out = [];
     try {
         $conn = OpenConnection();
-        $sql = "SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo
-                FROM productos
-                WHERE activo = 1
-                ORDER BY categoria, nombre";
+        // SP lista productos activos
+        $sql = "CALL sp_Productos_ListarActivos()";
         $res = $conn->query($sql);
         while ($row = $res->fetch_assoc()) {
-            $row['precio'] = (float)$row['precio'];
-            $row['stock'] = (int)$row['stock'];
+            $row['precio']    = (float)$row['precio'];
+            $row['stock']     = (int)$row['stock'];
             $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
+        // Consumir resultados adicionales para liberar el handler
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -71,24 +74,26 @@ function getAllProducts() {
 }
 
 /**
- * Obtener producto por id
+ * Obtener producto por id utilizando procedimiento almacenado.
  */
 function getProductById($id) {
     $id = intval($id);
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo FROM productos WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("CALL sp_Producto_ObtenerPorId(?)");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $res = $stmt->get_result();
         $row = $res->fetch_assoc();
         $stmt->close();
+        // consumir resultados adicionales
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
         if ($row) {
-            $row['precio'] = (float)$row['precio'];
-            $row['stock'] = (int)$row['stock'];
+            $row['precio']    = (float)$row['precio'];
+            $row['stock']     = (int)$row['stock'];
             $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
         }
         return $row ?: null;
     } catch (Exception $e) {
@@ -98,17 +103,14 @@ function getProductById($id) {
 }
 
 /**
- * Crear producto
- * $data keys: nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo
+ * Crear producto vía procedimiento almacenado. Devuelve el ID generado o false.
  */
 function createProduct($data) {
     try {
-        $conn = OpenConnection();
-        $activo = isset($data['activo']) ? intval($data['activo']) : 1;
-        $es_equipo = isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
-        $sql = "INSERT INTO productos (nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo, activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
+        $conn     = OpenConnection();
+        $activo   = isset($data['activo']) ? intval($data['activo']) : 1;
+        $es_equipo= isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
+        $stmt = $conn->prepare("CALL sp_Producto_Crear(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
             "sssdisssii",
             $data['nombre'],
@@ -122,11 +124,13 @@ function createProduct($data) {
             $es_equipo,
             $activo
         );
-        $ok = $stmt->execute();
-        $id = $stmt->insert_id;
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
         $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
-        return $ok ? $id : false;
+        return ($row && isset($row['id'])) ? intval($row['id']) : false;
     } catch (Exception $e) {
         product_log_error($e);
         return false;
@@ -134,18 +138,18 @@ function createProduct($data) {
 }
 
 /**
- * Actualizar producto por id
+ * Actualizar producto por id vía procedimiento almacenado.
  */
 function updateProduct($id, $data) {
     $id = intval($id);
     try {
-        $conn = OpenConnection();
+        $conn      = OpenConnection();
         $es_equipo = isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
-        $activo = isset($data['activo']) ? intval($data['activo']) : 1;
-        $sql = "UPDATE productos SET nombre = ?, descripcion = ?, categoria = ?, precio = ?, stock = ?, unidad = ?, proveedor = ?, imagen = ?, es_equipo = ?, activo = ? WHERE id = ?";
-        $stmt = $conn->prepare($sql);
+        $activo    = isset($data['activo']) ? intval($data['activo']) : 1;
+        $stmt = $conn->prepare("CALL sp_Producto_Actualizar(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
-            "sssdisssiii",
+            "isssdisssii",
+            $id,
             $data['nombre'],
             $data['descripcion'],
             $data['categoria'],
@@ -155,11 +159,11 @@ function updateProduct($id, $data) {
             $data['proveedor'],
             $data['imagen'],
             $es_equipo,
-            $activo,
-            $id
+            $activo
         );
         $ok = $stmt->execute();
         $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
         return $ok;
     } catch (Exception $e) {
@@ -169,16 +173,17 @@ function updateProduct($id, $data) {
 }
 
 /**
- * Eliminar producto (soft delete)
+ * Desactivar (soft delete) producto mediante procedimiento almacenado.
  */
 function deleteProduct($id) {
     $id = intval($id);
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("UPDATE productos SET activo = 0 WHERE id = ?");
+        $stmt = $conn->prepare("CALL sp_Producto_Eliminar(?)");
         $stmt->bind_param("i", $id);
         $ok = $stmt->execute();
         $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
         return $ok;
     } catch (Exception $e) {
@@ -188,25 +193,26 @@ function deleteProduct($id) {
 }
 
 /**
- * Buscar productos por término (nombre, descripcion, proveedor, categoria)
+ * Buscar productos por término (nombre, descripcion, proveedor, categoría) via SP.
  */
 function searchProducts($term) {
     $out = [];
     try {
         $conn = OpenConnection();
-        $t = '%' . $term . '%';
-        $stmt = $conn->prepare("SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo FROM productos WHERE activo = 1 AND (nombre LIKE ? OR descripcion LIKE ? OR proveedor LIKE ? OR categoria LIKE ?)");
-        $stmt->bind_param("ssss", $t, $t, $t, $t);
+        $t    = '%' . $term . '%';
+        $stmt = $conn->prepare("CALL sp_Productos_Buscar(?)");
+        $stmt->bind_param("s", $t);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
-            $row['precio'] = (float)$row['precio'];
-            $row['stock'] = (int)$row['stock'];
+            $row['precio']    = (float)$row['precio'];
+            $row['stock']     = (int)$row['stock'];
             $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
         $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -215,21 +221,25 @@ function searchProducts($term) {
 }
 
 /**
- * Productos por categoría
+ * Obtener productos por categoría via procedimiento almacenado.
  */
 function getProductsByCategory($cat) {
     $out = [];
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo FROM productos WHERE activo = 1 AND categoria = ? ORDER BY nombre");
+        $stmt = $conn->prepare("CALL sp_Productos_PorCategoria(?)");
         $stmt->bind_param("s", $cat);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
-            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
+            $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
+            $row['es_equipo'] = isset($row['es_equipo']) ? (int)$row['es_equipo'] : null;
+            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
         $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -238,20 +248,21 @@ function getProductsByCategory($cat) {
 }
 
 /**
- * Obtener solo equipos
+ * Obtener únicamente productos que son equipos via SP.
  */
 function getEquipmentProducts() {
     $out = [];
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("SELECT id, nombre, descripcion, categoria, precio, stock, unidad, proveedor, imagen, es_equipo FROM productos WHERE activo = 1 AND es_equipo = 1 ORDER BY nombre");
-        $stmt->execute();
-        $res = $stmt->get_result();
+        $res  = $conn->query("CALL sp_Productos_Equipos()");
         while ($row = $res->fetch_assoc()) {
-            $row['imagen'] = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
+            $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
+            $row['es_equipo'] = isset($row['es_equipo']) ? (int)$row['es_equipo'] : null;
+            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
-        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
