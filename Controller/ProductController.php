@@ -1,9 +1,24 @@
 <?php
-
 header('Content-Type: application/json; charset=utf-8');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 include_once __DIR__ . '/../Model/ProductModel.php';
 
-$action = isset($_REQUEST['action']) ? $_REQUEST['action'] : 'list';
+/** Solo admin para mutaciones */
+function isAdmin(): bool {
+    $perfil = $_SESSION["ConsecutivoPerfil"] ?? ($_SESSION["User"]["ConsecutivoPerfil"] ?? "2");
+    return ((string)$perfil === "1");
+}
+function requireAdmin(): void {
+    if (!isAdmin()) {
+        throw new Exception("Acceso denegado (solo administrador).");
+    }
+}
+
+$action = $_REQUEST['action'] ?? 'list';
 
 /**
  * FIX PHP < 8: str_starts_with no existe
@@ -26,8 +41,8 @@ function projectBaseUrl(): string
 }
 
 /**
- * Convierte "imagenes/xxx.jpg" -> "/Proyecto.../imagenes/xxx.jpg"
- * Mantiene intactas URLs externas (http/https) y rutas absolutas (/...)
+ * Convierte rutas relativas en rutas absolutas del proyecto.
+ * - Mantiene intactas URLs externas (http/https) y rutas absolutas (/...)
  */
 function normalizeImagePath(?string $img): string
 {
@@ -40,11 +55,45 @@ function normalizeImagePath(?string $img): string
     return projectBaseUrl() . '/' . ltrim($img, '/');     // relativa -> absoluta desde raíz del proyecto
 }
 
+/**
+ * Manejo seguro de upload. Devuelve ruta relativa tipo "imagenes/xxx.jpg" o ''.
+ */
+function handleImageUpload(string $fieldName = 'imagenFile'): string
+{
+    if (!isset($_FILES[$fieldName]) || !is_array($_FILES[$fieldName])) return '';
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) return '';
+
+    $tmpName  = $_FILES[$fieldName]['tmp_name'];
+    $origName = $_FILES[$fieldName]['name'];
+
+    $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+    $allowed = ['jpg','jpeg','png','gif','webp'];
+
+    if (!in_array($ext, $allowed, true)) {
+        throw new Exception("Formato de imagen no permitido. Use: jpg, jpeg, png, gif, webp.");
+    }
+
+    $newName = uniqid('prod_', true) . '.' . $ext;
+    $destDir = dirname(__DIR__) . '/imagenes/';
+
+    if (!is_dir($destDir)) {
+        if (!mkdir($destDir, 0775, true)) {
+            throw new Exception("No se pudo crear la carpeta /imagenes");
+        }
+    }
+
+    if (!move_uploaded_file($tmpName, $destDir . $newName)) {
+        throw new Exception("No se pudo guardar la imagen en el servidor.");
+    }
+
+    return 'imagenes/' . $newName;
+}
+
 try {
 
     switch ($action) {
 
-        case 'list':
+        case 'list': {
             $products = getAllProducts();
 
             if (is_array($products)) {
@@ -58,8 +107,9 @@ try {
 
             echo json_encode(['success' => true, 'data' => $products ?? []]);
             break;
+        }
 
-        case 'view':
+        case 'view': {
             $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
             if ($id <= 0) throw new Exception("ID inválido");
 
@@ -70,8 +120,9 @@ try {
 
             echo json_encode(['success' => true, 'data' => $p]);
             break;
+        }
 
-        case 'search':
+        case 'search': {
             $q = isset($_GET['q']) ? trim($_GET['q']) : '';
             if ($q === '') {
                 echo json_encode(['success' => true, 'data' => []]);
@@ -90,47 +141,36 @@ try {
 
             echo json_encode(['success' => true, 'data' => $res ?? []]);
             break;
+        }
 
-        case 'create':
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                throw new Exception("Usar POST");
-            }
+        case 'create': {
+            requireAdmin();
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception("Usar POST");
 
             $data = [
-                'nombre' => $_POST['nombre'] ?? '',
-                'descripcion' => $_POST['descripcion'] ?? '',
-                'categoria' => $_POST['categoria'] ?? '',
+                'nombre' => trim($_POST['nombre'] ?? ''),
+                'descripcion' => trim($_POST['descripcion'] ?? ''),
+                'categoria' => trim($_POST['categoria'] ?? ''),
                 'precio' => isset($_POST['precio']) ? floatval($_POST['precio']) : 0,
                 'stock' => isset($_POST['stock']) ? intval($_POST['stock']) : 0,
-                'unidad' => $_POST['unidad'] ?? '',
-                'proveedor' => $_POST['proveedor'] ?? '',
-                'imagen' => $_POST['imagen'] ?? '',
+                'unidad' => trim($_POST['unidad'] ?? ''),
+                'proveedor' => trim($_POST['proveedor'] ?? ''),
+                'imagen' => trim($_POST['imagen'] ?? ''),
                 'es_equipo' => isset($_POST['es_equipo']) ? intval($_POST['es_equipo']) : 0,
                 'activo' => 1
             ];
 
-            if (isset($_FILES['imagenFile']) && is_array($_FILES['imagenFile']) && $_FILES['imagenFile']['error'] === UPLOAD_ERR_OK) {
-                $tmpName = $_FILES['imagenFile']['tmp_name'];
-                $origName = $_FILES['imagenFile']['name'];
-                $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-                $allowed = ['jpg','jpeg','png','gif','webp'];
+            if ($data['nombre'] === '') throw new Exception("Nombre requerido");
+            if ($data['categoria'] === '') throw new Exception("Categoría requerida");
 
-                if (in_array($ext, $allowed, true)) {
-                    $newName = uniqid('prod_', true) . '.' . $ext;
-                    $destDir = dirname(__DIR__) . '/imagenes/';
-
-                    if (!is_dir($destDir)) mkdir($destDir, 0775, true);
-
-                    if (move_uploaded_file($tmpName, $destDir . $newName)) {
-                        $data['imagen'] = 'imagenes/' . $newName;
-                    }
-                }
+            // Upload reemplaza imagen si viene archivo
+            $uploaded = handleImageUpload('imagenFile');
+            if ($uploaded !== '') {
+                $data['imagen'] = $uploaded;
             }
 
-            if (trim($data['nombre']) === '') throw new Exception("Nombre requerido");
-
             $id = createProduct($data);
-            if ($id === false) throw new Exception("No se pudo crear el producto");
+            if ($id === false) throw new Exception("No se pudo crear el producto (revisar SP/BD).");
 
             echo json_encode([
                 'success' => true,
@@ -138,76 +178,66 @@ try {
                 'imagen' => normalizeImagePath($data['imagen'] ?? '')
             ]);
             break;
+        }
 
-        case 'update':
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                throw new Exception("Usar POST");
-            }
+        case 'update': {
+            requireAdmin();
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception("Usar POST");
 
             $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
             if ($id <= 0) throw new Exception("ID inválido");
 
             $data = [
-                'nombre' => $_POST['nombre'] ?? '',
-                'descripcion' => $_POST['descripcion'] ?? '',
-                'categoria' => $_POST['categoria'] ?? '',
+                'nombre' => trim($_POST['nombre'] ?? ''),
+                'descripcion' => trim($_POST['descripcion'] ?? ''),
+                'categoria' => trim($_POST['categoria'] ?? ''),
                 'precio' => isset($_POST['precio']) ? floatval($_POST['precio']) : 0,
                 'stock' => isset($_POST['stock']) ? intval($_POST['stock']) : 0,
-                'unidad' => $_POST['unidad'] ?? '',
-                'proveedor' => $_POST['proveedor'] ?? '',
-                'imagen' => $_POST['imagen'] ?? '',
+                'unidad' => trim($_POST['unidad'] ?? ''),
+                'proveedor' => trim($_POST['proveedor'] ?? ''),
+                'imagen' => trim($_POST['imagen'] ?? ''),
                 'es_equipo' => isset($_POST['es_equipo']) ? intval($_POST['es_equipo']) : 0,
                 'activo' => isset($_POST['activo']) ? intval($_POST['activo']) : 1
             ];
 
-            if (isset($_FILES['imagenFile']) && is_array($_FILES['imagenFile']) && $_FILES['imagenFile']['error'] === UPLOAD_ERR_OK) {
-                $tmpName = $_FILES['imagenFile']['tmp_name'];
-                $origName = $_FILES['imagenFile']['name'];
-                $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-                $allowed = ['jpg','jpeg','png','gif','webp'];
+            if ($data['nombre'] === '') throw new Exception("Nombre requerido");
+            if ($data['categoria'] === '') throw new Exception("Categoría requerida");
 
-                if (in_array($ext, $allowed, true)) {
-                    $newName = uniqid('prod_', true) . '.' . $ext;
-                    $destDir = dirname(__DIR__) . '/imagenes/';
-
-                    if (!is_dir($destDir)) mkdir($destDir, 0775, true);
-
-                    if (move_uploaded_file($tmpName, $destDir . $newName)) {
-                        $data['imagen'] = 'imagenes/' . $newName;
-                    }
-                }
+            // Upload reemplaza imagen si viene archivo
+            $uploaded = handleImageUpload('imagenFile');
+            if ($uploaded !== '') {
+                $data['imagen'] = $uploaded;
             }
 
             $ok = updateProduct($id, $data);
-            if (!$ok) throw new Exception("No se pudo actualizar");
-
-            echo json_encode(['success' => true, 'imagen' => normalizeImagePath($data['imagen'] ?? '')]);
-            break;
-
-        case 'delete':
-            $id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
-            if ($id <= 0) throw new Exception("ID inválido");
-
-            // AHORA deleteProduct devuelve array con mensaje
-            $res = deleteProduct($id);
-
-            if (!is_array($res) || empty($res['success'])) {
-                throw new Exception($res['message'] ?? "No se pudo eliminar");
-            }
+            if (!$ok) throw new Exception("No se pudo actualizar el producto (revisar SP/BD).");
 
             echo json_encode([
                 'success' => true,
-                'mode' => $res['mode'] ?? 'none',
-                'message' => $res['message'] ?? 'OK'
+                'imagen' => normalizeImagePath($data['imagen'] ?? '')
             ]);
             break;
+        }
+
+        case 'delete': {
+            requireAdmin();
+
+            $id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+            if ($id <= 0) throw new Exception("ID inválido");
+
+            $ok = deleteProduct($id);
+            if (!$ok) throw new Exception("No se pudo eliminar el producto (revisar SP/BD).");
+
+            echo json_encode(['success' => true]);
+            break;
+        }
 
         default:
-            throw new Exception("Acción no soportada");
+            throw new Exception("Acción no soportada: {$action}");
     }
 
 } catch (Throwable $e) {
-    http_response_code(500);
+    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

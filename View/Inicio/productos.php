@@ -2,232 +2,209 @@
 session_start();
 include_once __DIR__ . '/../layoutInterno.php';
 
-// Redirige a inicio de sesión si no hay usuario
+// Seguridad básica (si tu proyecto ya lo maneja diferente, lo podés ajustar)
 if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
     header("Location: InicioSesion.php");
     exit;
 }
 
-// Determina si el usuario tiene perfil de administrador (perfil = 1)
 $perfil = $_SESSION["ConsecutivoPerfil"] ?? ($_SESSION["User"]["ConsecutivoPerfil"] ?? "2");
-$esAdmin = ($perfil == "1");
+$isAdmin = ((string)$perfil === "1");
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <?php showCss(); ?>
-    <style>
-      :root{
-        --jj-navy:#0c2c3c;
-        --jj-navy-2:#143044;
-        --jj-gold:#cca44c;
-        --jj-gold-2:#a97823;
-        --jj-maroon:#8c1c1c;
-        --jj-cream:#f7f5f0;
-        --jj-graphite:#1c2430;
-      }
-
-      .page-title{ font-weight: 800; letter-spacing: .2px; color: var(--jj-navy); }
-
-      .filters-card{
-        background: rgba(255,255,255,.92);
-        border: 1px solid rgba(0,0,0,.08);
-        border-radius: 16px;
-        padding: 14px 14px 10px 14px;
-        box-shadow: 0 14px 28px rgba(0,0,0,.10);
-      }
-
-      .search-input{
-        border-radius: 999px !important;
-        padding-left: 18px !important;
-        border: 1px solid rgba(0,0,0,.16) !important;
-      }
-      .search-input:focus{
-        border-color: rgba(204,164,76,.75) !important;
-        box-shadow: 0 0 0 .2rem rgba(204,164,76,.22) !important;
-      }
-
-      .cat-filter-group{ display:flex; flex-wrap: wrap; gap: 8px; }
-      .cat-filter-group button{
-        border-radius: 999px;
-        padding: 6px 12px;
-        border: 1px solid rgba(0,0,0,.12);
-        background: rgba(255,255,255,.85);
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--jj-navy);
-        transition: .15s ease-in-out;
-      }
-      .cat-filter-group button.active{
-        background: rgba(204,164,76,.22);
-        border-color: rgba(204,164,76,.55);
-        color: var(--jj-navy);
-      }
-      .cat-filter-group button:hover{ background: var(--jj-gold); color: var(--jj-graphite); }
-
-      .view-cart-btn{ font-size:14px; padding:7px 14px; border-radius:999px; }
-
-      .floating-cart-btn{
-        position: fixed;
-        bottom: 18px;
-        right: 18px;
-        z-index: 9999;
-        background-color: var(--jj-gold);
-        color: #1b1b1b;
-        border: none;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        box-shadow: 0 18px 40px rgba(0,0,0,.22);
-        display:flex;
-        align-items:center;
-        justify-content:center;
-      }
-      .floating-cart-btn:hover{ filter: brightness(.96); transform: translateY(-1px); }
-      .floating-cart-btn .badge{
-        position: absolute;
-        top: -6px;
-        right: -6px;
-        border-radius: 999px;
-        font-size: 12px;
-        padding: 6px 8px;
-        background: var(--jj-maroon);
-        color:#fff;
-      }
-
-      .product-card{
-        border: 1px solid rgba(0,0,0,.08);
-        background: rgba(255,255,255,.93);
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 12px 26px rgba(0,0,0,.10);
-        transition: .15s ease-in-out;
-        height: 100%;
-      }
-      .product-card:hover{ transform: translateY(-2px); box-shadow: 0 18px 40px rgba(0,0,0,.14); }
-
-      .product-img{ width: 100%; height: 180px; object-fit: cover; background: #fff; }
-      .product-body{ padding: 12px 12px 10px 12px; }
-      .product-category{
-        display:inline-block;
-        font-size: 12px;
-        font-weight: 800;
-        color: var(--jj-maroon);
-        letter-spacing: .2px;
-        margin-bottom: 4px;
-      }
-      .product-title{
-        font-weight: 800;
-        color: var(--jj-navy);
-        font-size: 15px;
-        margin: 0 0 8px 0;
-        min-height: 38px;
-      }
-      .product-price{ font-size: 16px; font-weight: 900; color: var(--jj-graphite); margin-bottom: 4px; }
-      .product-stock{ font-size: 12px; color: rgba(0,0,0,.65); }
-
-      .product-actions{
-        padding: 10px 12px 12px 12px;
-        display:flex;
-        gap: 8px;
-        align-items:center;
-        justify-content: space-between;
-      }
-      .btn-add{ border-radius: 12px; font-weight: 800; }
-
-      .toast{
-        position: fixed;
-        bottom: 22px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(12,44,60,.96);
-        color: #fff;
-        padding: 10px 14px;
-        border-radius: 12px;
-        box-shadow: 0 18px 40px rgba(0,0,0,.25);
-        opacity: 0;
-        transition: .15s ease-in-out;
-        z-index: 99999;
-        font-weight: 700;
-        font-size: 13px;
-      }
-      .toast.visible{ opacity: 1; }
-
-      .btn-primary{
-        background: linear-gradient(135deg, var(--jj-gold), #f1c55a) !important;
-        border: none !important;
-        color: #1b1b1b !important;
-        font-weight: 900 !important;
-      }
-      .btn-outline-primary{
-        border-color: rgba(204,164,76,.55) !important;
-        color: var(--jj-navy) !important;
-        font-weight: 800 !important;
-      }
-      .btn-outline-primary:hover{ background: rgba(204,164,76,.18) !important; }
-    </style>
+    <link rel="stylesheet" href="../css/jj-store-modern.css">
 </head>
 
 <body class="sb-nav-fixed">
 <?php showNavBar(); ?>
 
 <div id="layoutSidenav">
-  <?php showSideBar(); ?>
+    <?php showSideBar(); ?>
 
-  <div id="layoutSidenav_content">
-    <main class="container-fluid px-4">
-      <div class="d-flex align-items-center justify-content-between mt-4 mb-3">
-        <h2 class="page-title m-0">Productos</h2>
+    <div id="layoutSidenav_content">
+        <main class="container-fluid px-4 page-shell">
 
-        <?php if ($esAdmin): ?>
-          <button class="btn btn-primary" id="btnNuevoProducto" type="button">
-            <i class="fas fa-plus me-1"></i> Nuevo producto
-          </button>
-        <?php endif; ?>
-      </div>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4 mb-3">
+                <div>
+                    <h1 class="m-0">Productos</h1>
+                </div>
 
-      <div class="filters-card mb-4">
-        <div class="row align-items-center">
-          <div class="col-md-4 mb-2">
-            <input id="searchInput" class="form-control search-input" type="text" placeholder="Buscar...">
-          </div>
-          <div class="col-md-8 mb-2">
-            <div class="d-flex flex-wrap align-items-center gap-3 w-100">
-              <div id="catFilterGroup" class="cat-filter-group"></div>
-              <button id="viewCartBtn" type="button" class="btn btn-outline-primary ms-auto view-cart-btn">
-                <i class="fas fa-shopping-cart me-1"></i>
-                Carrito (<span id="cartCount">0</span>)
-              </button>
+                <div class="d-flex gap-2 align-items-center">
+                    <?php if ($isAdmin): ?>
+                        <button id="btnNuevoProducto" type="button" class="btn btn-warning btn-soft">
+                            <i class="fas fa-plus me-1"></i> Nuevo producto
+                        </button>
+                    <?php endif; ?>
+
+                    <a class="btn btn-outline-light btn-soft" href="carrito.php">
+                        <i class="fas fa-shopping-cart me-1"></i> Carrito (<span id="cartCountTop">0</span>)
+                    </a>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="row" id="productList">
-        <p>Cargando productos...</p>
-      </div>
-    </main>
+            <div class="card-soft mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                    <input id="txtBuscar" class="form-control search-pill" style="max-width:420px" placeholder="Buscar...">
 
-    <button id="floatingCartBtn" class="floating-cart-btn" title="Ver carrito">
-      <i class="fas fa-shopping-cart"></i>
-      <span id="floatingCartBadge" class="badge d-none">0</span>
-    </button>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-secondary btn-soft btn-sm" data-cat="Todos">Todos</button>
+                        <button type="button" class="btn btn-outline-secondary btn-soft btn-sm" data-cat="Licorera">Licorera</button>
+                        <button type="button" class="btn btn-outline-secondary btn-soft btn-sm" data-cat="Mayoreo">Mayoreo</button>
+                    </div>
+                </div>
+            </div>
 
-    <?php showFooter(); ?>
-  </div>
+            <div id="productsError" class="alert alert-danger d-none"></div>
+
+            <div id="productsGrid" class="row g-3">
+                <div class="col-12 text-muted">Cargando...</div>
+            </div>
+
+        </main>
+        <?php showFooter(); ?>
+    </div>
 </div>
 
 <?php showJs(); ?>
 
+<!-- Modal Crear/Editar -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.14) 100%); color:#fff;">
+        <h5 class="modal-title" id="productModalTitle" style="font-weight:900;">Producto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <form id="productForm">
+        <div class="modal-body">
+            <div id="productFormError" class="alert alert-danger d-none"></div>
+
+            <input type="hidden" id="p_id" name="id" value="">
+
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Nombre</label>
+                    <input class="form-control" id="p_nombre" name="nombre" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Categoría</label>
+                    <input class="form-control" id="p_categoria" name="categoria" placeholder="Licorera" required>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold">Descripción</label>
+                    <textarea class="form-control" id="p_descripcion" name="descripcion" rows="2"></textarea>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Precio</label>
+                    <input class="form-control" id="p_precio" name="precio" type="number" step="0.01" min="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Stock</label>
+                    <input class="form-control" id="p_stock" name="stock" type="number" step="1" min="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Unidad</label>
+                    <input class="form-control" id="p_unidad" name="unidad" placeholder="pack / unidad">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Proveedor</label>
+                    <input class="form-control" id="p_proveedor" name="proveedor">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Imagen (URL opcional)</label>
+                    <input class="form-control" id="p_imagen" name="imagen" placeholder="https://... o imagenes/xxx.jpg">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Subir imagen</label>
+                    <input class="form-control" id="p_imagenFile" name="imagenFile" type="file" accept=".jpg,.jpeg,.png,.gif,.webp">
+                    <div class="form-text">Si subís archivo, reemplaza la URL.</div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">¿Equipo?</label>
+                    <select class="form-select" id="p_es_equipo" name="es_equipo">
+                        <option value="0">No</option>
+                        <option value="1">Sí</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Activo</label>
+                    <select class="form-select" id="p_activo" name="activo">
+                        <option value="1">Sí</option>
+                        <option value="0">No</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-soft" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-soft" id="btnGuardarProducto">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  const esAdmin = <?= $esAdmin ? 'true' : 'false' ?>;
+  const API_PRODUCTS = '../../Controller/ProductController.php';
+  const API_CART = '../../Controller/CartController.php';
 
-  const CART_URL = '../../Controller/CartController.php';
-  const PROD_URL = '../../Controller/ProductController.php';
+  const isAdmin = <?php echo $isAdmin ? 'true' : 'false'; ?>;
 
-  function escapeHtml(str){
-    return String(str || '')
+  const grid = document.getElementById('productsGrid');
+  const errBox = document.getElementById('productsError');
+  const txtBuscar = document.getElementById('txtBuscar');
+  const cartCountTop = document.getElementById('cartCountTop');
+
+  let allProducts = [];
+  let currentCat = 'Todos';
+
+  function showError(msg){
+    errBox.textContent = msg;
+    errBox.classList.remove('d-none');
+  }
+  function clearError(){
+    errBox.classList.add('d-none');
+    errBox.textContent = '';
+  }
+
+  async function getJson(url){
+    const r = await fetch(url);
+    const t = await r.text();
+    try { return JSON.parse(t); }
+    catch(e){ throw new Error('Respuesta inválida: ' + t); }
+  }
+
+  async function postForm(url, formData){
+    const r = await fetch(url, { method:'POST', body: formData });
+    const t = await r.text();
+    try { return JSON.parse(t); }
+    catch(e){ throw new Error('Respuesta inválida: ' + t); }
+  }
+
+  function money(n){
+    return '₡' + Number(n||0).toLocaleString('es-CR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function escapeHtml(s){
+    return String(s||'')
       .replaceAll('&','&amp;')
       .replaceAll('<','&lt;')
       .replaceAll('>','&gt;')
@@ -235,241 +212,289 @@ $esAdmin = ($perfil == "1");
       .replaceAll("'","&#039;");
   }
 
-  function toast(msg){
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.innerText = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.classList.add('visible'), 10);
-    setTimeout(() => {
-      t.classList.remove('visible');
-      setTimeout(() => t.remove(), 250);
-    }, 1200);
-  }
-
-  // ✅ parse seguro: si el servidor responde HTML/Notice, no rompe silenciosamente
-  async function fetchJsonSafe(url, options){
-    const r = await fetch(url, Object.assign({ cache: 'no-store' }, options || {}));
-    const text = await r.text();
-    try { return JSON.parse(text); }
-    catch(e){
-      console.error('Respuesta NO JSON desde:', url, '\n', text);
-      throw new Error('La respuesta del servidor no es JSON (revisar Notices/Warnings en PHP).');
-    }
-  }
-
-  async function updateCartCount() {
-    try{
-      const json = await fetchJsonSafe(CART_URL + '?action=count', { method: 'GET' });
-      const count = Number(json.count || 0);
-
-      const countEl = document.getElementById('cartCount');
-      if (countEl) countEl.textContent = count;
-
-      const badge = document.getElementById('floatingCartBadge');
-      if (badge) {
-        badge.textContent = count;
-        badge.classList.toggle('d-none', !(count > 0));
-      }
-    }catch(e){
-      // no spamear al usuario
-      console.error(e);
-    }
-  }
-
-  // ✅ handler robusto
-  async function addToCart(productId, btn){
-    try{
-      if(btn){
-        btn.disabled = true;
-        btn.dataset.oldText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Agregando...';
-      }
-
-      const fd = new FormData();
-      // nombres “oficiales”
-      fd.append('product_id', productId);
-      fd.append('qty', 1);
-      // nombres alternos (por si algún controlador/modelo antiguo los espera)
-      fd.append('idProducto', productId);
-      fd.append('cantidad', 1);
-
-      const json = await fetchJsonSafe(CART_URL + '?action=addAjax', { method:'POST', body: fd });
-
-      if(!json.success){
-        toast(json.message || 'No se pudo agregar al carrito.');
-        if ((json.message || '').toLowerCase().includes('iniciar sesión')) {
-          setTimeout(() => window.location = 'InicioSesion.php', 700);
-        }
-        return;
-      }
-
-      await updateCartCount();
-      toast('Producto agregado al carrito');
-
-    }catch(err){
-      console.error(err);
-      toast('No se pudo agregar al carrito (revisa consola / PHP notices).');
-    }finally{
-      if(btn){
-        btn.disabled = false;
-        btn.innerHTML = btn.dataset.oldText || '<i class="fas fa-cart-plus me-1"></i> Agregar';
-      }
-    }
-  }
-
-  let allProducts = [];
-  let currentCategory = 'ALL';
-  let currentSearch = '';
-
-  function renderCategories(){
-    const group = document.getElementById('catFilterGroup');
-    if(!group) return;
-
-    const cats = Array.from(new Set(allProducts.map(p => (p.categoria || '').trim()).filter(c => c.length>0)));
-    cats.sort((a,b)=>a.localeCompare(b));
-
-    group.innerHTML = '';
-    const btnAll = document.createElement('button');
-    btnAll.type = 'button';
-    btnAll.textContent = 'Todos';
-    btnAll.className = (currentCategory === 'ALL') ? 'active' : '';
-    btnAll.addEventListener('click', ()=>{
-      currentCategory = 'ALL';
-      renderCategories();
-      renderProducts();
-    });
-    group.appendChild(btnAll);
-
-    cats.forEach(cat=>{
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = cat;
-      b.className = (currentCategory === cat) ? 'active' : '';
-      b.addEventListener('click', ()=>{
-        currentCategory = cat;
-        renderCategories();
-        renderProducts();
-      });
-      group.appendChild(b);
+  function filteredProducts(){
+    const q = (txtBuscar.value||'').trim().toLowerCase();
+    return allProducts.filter(p=>{
+      if(currentCat !== 'Todos' && String(p.categoria||'') !== currentCat) return false;
+      if(!q) return true;
+      const t = [p.nombre, p.descripcion, p.categoria, p.proveedor].join(' ').toLowerCase();
+      return t.includes(q);
     });
   }
 
-  function applyFilters(list){
-    return list.filter(p=>{
-      const okCat = (currentCategory === 'ALL') || String(p.categoria || '') === currentCategory;
-      const q = currentSearch.trim().toLowerCase();
-      const okSearch = !q
-        || String(p.nombre||'').toLowerCase().includes(q)
-        || String(p.descripcion||'').toLowerCase().includes(q);
-      return okCat && okSearch;
-    });
-  }
-
-  function bindCartButtons(){
-    // ✅ evita que el click “suba” y termine abriendo el <a> del producto
-    document.querySelectorAll('[data-add-to-cart]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        const id = btn.getAttribute('data-add-to-cart');
-        addToCart(id, btn);
-      });
-    });
-  }
-
-  function renderProducts(){
-    const listEl = document.getElementById('productList');
-    if(!listEl) return;
-
-    const list = applyFilters(allProducts);
+  function render(){
+    clearError();
+    const list = filteredProducts();
 
     if(list.length === 0){
-      listEl.innerHTML = '<p class="text-muted">No hay productos para mostrar.</p>';
+      grid.innerHTML = `<div class="col-12 text-muted">No hay productos para mostrar.</div>`;
       return;
     }
 
-    listEl.innerHTML = '';
-    list.forEach(p=>{
-      const col = document.createElement('div');
-      col.className = 'col-xl-3 col-lg-4 col-md-6 mb-4';
+    grid.innerHTML = list.map(p=>{
+      const id = Number(p.id);
+      const img = p.imagen ? p.imagen : '';
+      const nombre = escapeHtml(p.nombre||'');
+      const cat = escapeHtml(p.categoria||'');
+      const precio = money(p.precio);
+      const stock = Number(p.stock||0);
 
-      col.innerHTML = `
-        <div class="product-card">
-          <a href="verProducto.php?id=${encodeURIComponent(p.id)}" style="text-decoration:none; color:inherit;">
-            <img src="${escapeHtml(p.imagen)}" alt="${escapeHtml(p.nombre)}" class="product-img" onerror="this.src='../../public/images/placeholder.png'">
-            <div class="product-body">
-              <span class="product-category">${escapeHtml(p.categoria || '')}</span>
-              <h5 class="product-title">${escapeHtml(p.nombre || '')}</h5>
-              <div class="product-price">₡${Number(p.precio || 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-              <div class="product-stock">Stock: ${Number(p.stock || 0)}</div>
+      return `
+        <div class="col-12 col-md-6 col-lg-3">
+          <div class="card-soft" style="height:100%;">
+            <div style="border-radius:16px; overflow:hidden;">
+              <img src="${img}" alt="" style="width:100%; height:200px; object-fit:cover; display:block;">
             </div>
-          </a>
 
-          <div class="product-actions">
-            ${esAdmin ? `
-              <button class="btn btn-outline-primary btn-sm" type="button" data-edit="${p.id}">
-                <i class="fas fa-pen"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-sm" type="button" data-del="${p.id}">
-                <i class="fas fa-trash"></i>
-              </button>
-            ` : `
-              <button
-                class="btn btn-primary btn-sm btn-add"
-                type="button"
-                data-add-to-cart="${escapeHtml(p.id)}"
-                ${Number(p.stock||0)<=0 ? 'disabled' : ''}>
-                <i class="fas fa-cart-plus me-1"></i> Agregar
+            <div style="padding:14px 14px 10px;">
+              <div class="text-muted" style="font-weight:900; font-size:12px;">${cat}</div>
+              <div style="font-weight:900; line-height:1.2; margin-bottom:8px;">${nombre}</div>
+
+              <div style="font-weight:900; margin-bottom:6px;">${precio}</div>
+              <div class="text-muted" style="font-size:12px;">Stock: ${stock}</div>
+            </div>
+
+            <div class="d-flex gap-2 align-items-center justify-content-between" style="padding:10px 14px 14px;">
+              <button type="button" class="btn btn-warning btn-soft btn-sm" data-add="${id}">
+                <i class="fas fa-cart-plus"></i>
               </button>
 
-              <a class="btn btn-outline-primary btn-sm" href="carrito.php">
-                <i class="fas fa-credit-card me-1"></i> Pagar
-              </a>
-            `}
+              ${isAdmin ? `
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-outline-secondary btn-soft btn-sm" data-edit="${id}" title="Editar">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-danger btn-soft btn-sm" data-del="${id}" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              ` : `<span></span>`}
+            </div>
           </div>
         </div>
       `;
+    }).join('');
 
-      listEl.appendChild(col);
+    // Bind botones
+    grid.querySelectorAll('[data-add]').forEach(btn=>{
+      btn.addEventListener('click', ()=> addToCart(btn.getAttribute('data-add')));
     });
 
-    bindCartButtons();
-  }
-
-  function loadProducts(){
-    fetchJsonSafe(PROD_URL + '?action=list')
-      .then(json=>{
-        if(!json.success) throw new Error(json.message || 'Error al cargar productos');
-        allProducts = json.data || [];
-        renderCategories();
-        renderProducts();
-      })
-      .catch(err=>{
-        console.error(err);
-        const listEl = document.getElementById('productList');
-        if(listEl) listEl.innerHTML = '<p class="text-danger">No se pudieron cargar los productos.</p>';
+    if(isAdmin){
+      grid.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=> openEdit(btn.getAttribute('data-edit')));
       });
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    updateCartCount();
-    loadProducts();
-
-    const search = document.getElementById('searchInput');
-    if(search){
-      search.addEventListener('input', ()=>{
-        currentSearch = search.value || '';
-        renderProducts();
+      grid.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=> doDelete(btn.getAttribute('data-del')));
       });
     }
+  }
 
-    const viewCartBtn = document.getElementById('viewCartBtn');
-    if(viewCartBtn) viewCartBtn.addEventListener('click', ()=> window.location.href = 'carrito.php');
+  async function loadProducts(){
+    grid.innerHTML = `<div class="col-12 text-muted">Cargando...</div>`;
+    try{
+      const j = await getJson(`${API_PRODUCTS}?action=list`);
+      if(!j.success) throw new Error(j.message || 'No se pudieron cargar los productos');
+      allProducts = j.data || [];
+      render();
+    }catch(err){
+      console.error(err);
+      showError(err.message || 'Error cargando productos');
+      grid.innerHTML = `<div class="col-12 text-muted">No se pudieron cargar.</div>`;
+    }
+  }
 
-    const floatingBtn = document.getElementById('floatingCartBtn');
-    if(floatingBtn) floatingBtn.addEventListener('click', ()=> window.location.href = 'carrito.php');
+  // -------------------------
+  // Carrito (solo sumar contador arriba)
+  // -------------------------
+  async function refreshCartCount(){
+    try{
+      const j = await getJson(`${API_CART}?action=list`);
+      if(j.success && j.data && Array.isArray(j.data.items)){
+        const c = j.data.items.reduce((a,b)=> a + Number(b.cantidad||0), 0);
+        cartCountTop.textContent = String(c);
+      }
+    }catch(e){
+      // ignore
+    }
+  }
+
+  async function addToCart(productId){
+    try{
+      const fd = new FormData();
+      fd.append('id', productId);
+      const j = await postForm(`${API_CART}?action=add`, fd);
+      if(!j.success) throw new Error(j.message || 'No se pudo agregar');
+      await refreshCartCount();
+    }catch(err){
+      console.error(err);
+      showError(err.message || 'No se pudo agregar al carrito');
+    }
+  }
+
+  // -------------------------
+  // ADMIN: Crear / Editar / Eliminar
+  // -------------------------
+  const modalEl = document.getElementById('productModal');
+  const modal = new bootstrap.Modal(modalEl);
+  const form = document.getElementById('productForm');
+  const formErr = document.getElementById('productFormError');
+  const title = document.getElementById('productModalTitle');
+
+  const p_id = document.getElementById('p_id');
+  const p_nombre = document.getElementById('p_nombre');
+  const p_categoria = document.getElementById('p_categoria');
+  const p_descripcion = document.getElementById('p_descripcion');
+  const p_precio = document.getElementById('p_precio');
+  const p_stock = document.getElementById('p_stock');
+  const p_unidad = document.getElementById('p_unidad');
+  const p_proveedor = document.getElementById('p_proveedor');
+  const p_imagen = document.getElementById('p_imagen');
+  const p_imagenFile = document.getElementById('p_imagenFile');
+  const p_es_equipo = document.getElementById('p_es_equipo');
+  const p_activo = document.getElementById('p_activo');
+
+  function clearFormError(){
+    formErr.classList.add('d-none');
+    formErr.textContent = '';
+  }
+  function showFormError(msg){
+    formErr.textContent = msg;
+    formErr.classList.remove('d-none');
+  }
+
+  function openCreate(){
+    clearFormError();
+    title.textContent = 'Nuevo producto';
+
+    p_id.value = '';
+    p_nombre.value = '';
+    p_categoria.value = '';
+    p_descripcion.value = '';
+    p_precio.value = 0;
+    p_stock.value = 0;
+    p_unidad.value = '';
+    p_proveedor.value = '';
+    p_imagen.value = '';
+    p_imagenFile.value = '';
+    p_es_equipo.value = '0';
+    p_activo.value = '1';
+
+    modal.show();
+  }
+
+  async function openEdit(id){
+    clearFormError();
+    title.textContent = 'Editar producto';
+
+    try{
+      const j = await getJson(`${API_PRODUCTS}?action=view&id=${encodeURIComponent(id)}`);
+      if(!j.success) throw new Error(j.message || 'No se pudo cargar el producto');
+
+      const p = j.data || {};
+      p_id.value = p.id || id;
+      p_nombre.value = p.nombre || '';
+      p_categoria.value = p.categoria || '';
+      p_descripcion.value = p.descripcion || '';
+      p_precio.value = p.precio ?? 0;
+      p_stock.value = p.stock ?? 0;
+      p_unidad.value = p.unidad || '';
+      p_proveedor.value = p.proveedor || '';
+      // Guardamos lo que venga en BD (puede ser imagenes/xxx.jpg)
+      p_imagen.value = (p.imagen_raw || p.imagen || '');
+      p_imagenFile.value = '';
+      p_es_equipo.value = String(p.es_equipo ?? 0);
+      p_activo.value = String(p.activo ?? 1);
+
+      modal.show();
+
+    }catch(err){
+      console.error(err);
+      showError(err.message || 'No se pudo abrir editar');
+    }
+  }
+
+  async function doDelete(id){
+    if(!confirm('¿Eliminar este producto?')) return;
+
+    try{
+      const fd = new FormData();
+      fd.append('id', id);
+      const j = await postForm(`${API_PRODUCTS}?action=delete`, fd);
+      if(!j.success) throw new Error(j.message || 'No se pudo eliminar');
+
+      await loadProducts();
+
+    }catch(err){
+      console.error(err);
+      showError(err.message || 'No se pudo eliminar');
+    }
+  }
+
+  // Submit Create/Update
+  form.addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    clearFormError();
+
+    try{
+      const id = (p_id.value||'').trim();
+      const fd = new FormData();
+
+      fd.append('nombre', p_nombre.value.trim());
+      fd.append('categoria', p_categoria.value.trim());
+      fd.append('descripcion', p_descripcion.value.trim());
+      fd.append('precio', p_precio.value);
+      fd.append('stock', p_stock.value);
+      fd.append('unidad', p_unidad.value.trim());
+      fd.append('proveedor', p_proveedor.value.trim());
+      fd.append('imagen', p_imagen.value.trim());
+      fd.append('es_equipo', p_es_equipo.value);
+      fd.append('activo', p_activo.value);
+
+      if (p_imagenFile.files && p_imagenFile.files[0]) {
+        fd.append('imagenFile', p_imagenFile.files[0]);
+      }
+
+      let url = `${API_PRODUCTS}?action=create`;
+      if(id){
+        url = `${API_PRODUCTS}?action=update&id=${encodeURIComponent(id)}`;
+      }
+
+      const j = await postForm(url, fd);
+      if(!j.success) throw new Error(j.message || 'No se pudo guardar');
+
+      modal.hide();
+      await loadProducts();
+
+    }catch(err){
+      console.error(err);
+      showFormError(err.message || 'No se pudo guardar');
+    }
   });
+
+  // Botón nuevo
+  const btnNuevo = document.getElementById('btnNuevoProducto');
+  if(btnNuevo){
+    btnNuevo.addEventListener('click', openCreate);
+  }
+
+  // Filtros categoría
+  document.querySelectorAll('[data-cat]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentCat = btn.getAttribute('data-cat') || 'Todos';
+      render();
+    });
+  });
+
+  // Buscar
+  txtBuscar.addEventListener('input', render);
+
+  // Init
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await loadProducts();
+    await refreshCartCount();
+  });
+
 })();
 </script>
 

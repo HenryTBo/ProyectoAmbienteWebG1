@@ -2,9 +2,6 @@
 // Model/ProductModel.php
 // Manejo de productos - usa OpenConnection() / CloseConnection() desde ConexionModel.php
 
-if (!file_exists(__DIR__ . '/ConexionModel.php')) {
-    // Asegúrate de que ConexionModel.php exista y provea OpenConnection() y CloseConnection()
-}
 include_once __DIR__ . '/ConexionModel.php';
 
 /**
@@ -12,72 +9,92 @@ include_once __DIR__ . '/ConexionModel.php';
  */
 function product_log_error($e) {
     if (function_exists('SaveError')) {
-        try { SaveError($e); } catch (Exception $ex) { /* ignore */ }
-    } else {
-        // fallback
-        error_log('[ProductModel] ' . $e->getMessage());
+        try { SaveError($e); } catch (Throwable $ex) { /* ignore */ }
     }
-}
-
-/**
- * Consume resultados restantes de un SP para liberar el handler.
- */
-function product_consume_results($conn) {
-    if (!$conn) return;
-    try {
-        while ($conn->more_results() && $conn->next_result()) { /* consume */ }
-    } catch (Throwable $e) { /* ignore */ }
 }
 
 /**
  * Normaliza la ruta de imagen para un producto.
+ * - Si $img es URL (http/https) -> se deja tal cual.
+ * - Si es ruta absoluta (empieza por /) -> se deja tal cual.
+ * - Si es ruta relativa (ej: "imagenes/xxx.jpg") -> se deja tal cual (EL CONTROLLER la vuelve absoluta).
+ * - Si viene vacío -> placeholder.
+ *
+ * IMPORTANTE:
+ * Antes estabas ignorando rutas relativas válidas y devolviendo placeholder, por eso
+ * las imágenes subidas "no se reflejaban".
  */
 function normalizeProductImage($img, $nombre) {
     $placeholder = '/ProyectoAmbienteWebG1/public/images/placeholder.png';
-    // URL
-    if (!empty($img) && (strpos($img, 'http://') === 0 || strpos($img, 'https://') === 0)) {
+
+    $img = trim((string)$img);
+
+    // URL externa
+    if ($img !== '' && (stripos($img, 'http://') === 0 || stripos($img, 'https://') === 0)) {
         return $img;
     }
-    // Ruta absoluta
-    if (!empty($img) && strpos($img, '/') === 0) {
-        $serverPath = $_SERVER['DOCUMENT_ROOT'] . $img;
-        if (file_exists($serverPath)) return $img;
+
+    // Ruta absoluta web
+    if ($img !== '' && strpos($img, '/') === 0) {
+        return $img;
     }
 
-    // Buscar por nombre
-    $safe = preg_replace('/[^a-z0-9_\.]/i', '_', strtolower($nombre));
-    $candidateJpg = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.jpg';
-    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidateJpg)) return $candidateJpg;
-
-    $candidatePng = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.png';
-    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidatePng)) return $candidatePng;
+    // Ruta relativa (ej: imagenes/prod_xxx.jpg) => NO la mates, devuélvela.
+    // El Controller ya la convierte a absoluta con projectBaseUrl().
+    if ($img !== '') {
+        return $img;
+    }
 
     return $placeholder;
 }
 
 /**
+ * Helper seguro para preparar SP y lanzar Exception si falla.
+ */
+function product_prepare(mysqli $conn, string $sql): mysqli_stmt {
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare failed: {$conn->error}");
+    }
+    return $stmt;
+}
+
+/**
  * Lista todos los productos activos utilizando procedimiento almacenado.
+ * @return array
  */
 function getAllProducts() {
     $out = [];
+    $conn = null;
+
     try {
         $conn = OpenConnection();
         $sql = "CALL sp_Productos_ListarActivos()";
+
         $res = $conn->query($sql);
+        if (!$res) {
+            throw new Exception("Query failed sp_Productos_ListarActivos: {$conn->error}");
+        }
 
         while ($row = $res->fetch_assoc()) {
-            $row['precio']    = (float)$row['precio'];
-            $row['stock']     = (int)$row['stock'];
-            $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['precio']    = (float)($row['precio'] ?? 0);
+            $row['stock']     = (int)($row['stock'] ?? 0);
+            $row['es_equipo'] = (int)($row['es_equipo'] ?? 0);
+            $row['imagen']    = normalizeProductImage($row['imagen'] ?? '', $row['nombre'] ?? '');
             $out[] = $row;
         }
 
-        product_consume_results($conn);
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
-    } catch (Exception $e) {
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
     }
+
     return $out;
 }
 
@@ -86,27 +103,39 @@ function getAllProducts() {
  */
 function getProductById($id) {
     $id = intval($id);
+    $conn = null;
+
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("CALL sp_Producto_ObtenerPorId(?)");
+        $stmt = product_prepare($conn, "CALL sp_Producto_ObtenerPorId(?)");
         $stmt->bind_param("i", $id);
-        $stmt->execute();
+
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Producto_ObtenerPorId: {$stmt->error}");
+        }
+
         $res = $stmt->get_result();
         $row = $res ? $res->fetch_assoc() : null;
-        $stmt->close();
 
-        product_consume_results($conn);
+        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
 
         if ($row) {
-            $row['precio']    = (float)$row['precio'];
-            $row['stock']     = (int)$row['stock'];
-            $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['precio']    = (float)($row['precio'] ?? 0);
+            $row['stock']     = (int)($row['stock'] ?? 0);
+            $row['es_equipo'] = (int)($row['es_equipo'] ?? 0);
+            $row['imagen']    = normalizeProductImage($row['imagen'] ?? '', $row['nombre'] ?? '');
         }
+
         return $row ?: null;
-    } catch (Exception $e) {
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
         return null;
     }
 }
@@ -115,12 +144,14 @@ function getProductById($id) {
  * Crear producto vía procedimiento almacenado. Devuelve el ID generado o false.
  */
 function createProduct($data) {
+    $conn = null;
+
     try {
         $conn     = OpenConnection();
         $activo   = isset($data['activo']) ? intval($data['activo']) : 1;
         $es_equipo= isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
 
-        $stmt = $conn->prepare("CALL sp_Producto_Crear(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = product_prepare($conn, "CALL sp_Producto_Crear(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
             "sssdisssii",
             $data['nombre'],
@@ -134,17 +165,34 @@ function createProduct($data) {
             $es_equipo,
             $activo
         );
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $row = $res ? $res->fetch_assoc() : null;
-        $stmt->close();
 
-        product_consume_results($conn);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Producto_Crear: {$stmt->error}");
+        }
+
+        // SP hace SELECT LAST_INSERT_ID() AS id
+        $id = 0;
+        $res = $stmt->get_result();
+        if ($res) {
+            $row = $res->fetch_assoc();
+            $id = (int)($row['id'] ?? 0);
+        } else {
+            // Fallback por si get_result no está disponible
+            $id = (int)$conn->insert_id;
+        }
+
+        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
 
-        return ($row && isset($row['id'])) ? intval($row['id']) : false;
-    } catch (Exception $e) {
+        return ($id > 0) ? $id : false;
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
         return false;
     }
 }
@@ -154,12 +202,14 @@ function createProduct($data) {
  */
 function updateProduct($id, $data) {
     $id = intval($id);
+    $conn = null;
+
     try {
         $conn      = OpenConnection();
         $es_equipo = isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
         $activo    = isset($data['activo']) ? intval($data['activo']) : 1;
 
-        $stmt = $conn->prepare("CALL sp_Producto_Actualizar(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = product_prepare($conn, "CALL sp_Producto_Actualizar(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
             "isssdisssii",
             $id,
@@ -175,146 +225,136 @@ function updateProduct($id, $data) {
             $activo
         );
 
-        $ok = $stmt->execute();
-        $stmt->close();
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Producto_Actualizar: {$stmt->error}");
+        }
 
-        product_consume_results($conn);
+        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
 
-        return $ok;
-    } catch (Exception $e) {
+        return true;
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
         return false;
     }
 }
 
 /**
- * Soft delete directo (fallback cuando hay FK por pedidos).
- */
-function softDeleteProduct($id) {
-    $id = intval($id);
-    try {
-        $conn = OpenConnection();
-
-        // Ajusta el nombre de la tabla si en tu BD no se llama "productos"
-        $stmt = $conn->prepare("UPDATE productos SET activo = 0 WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $ok = $stmt->execute();
-        $stmt->close();
-
-        product_consume_results($conn);
-        CloseConnection($conn);
-
-        return $ok;
-    } catch (Exception $e) {
-        product_log_error($e);
-        return false;
-    }
-}
-
-/**
- * Desactivar/eliminar producto.
- * - Intenta SP sp_Producto_Eliminar
- * - Si falla (FK/pedidos), hace soft delete: activo=0
- *
- * Retorna un array:
- *  ['success'=>bool, 'mode'=>'hard'|'soft'|'none', 'message'=>string]
+ * Desactivar (soft delete) producto mediante procedimiento almacenado.
  */
 function deleteProduct($id) {
     $id = intval($id);
-    if ($id <= 0) {
-        return ['success' => false, 'mode' => 'none', 'message' => 'ID inválido'];
-    }
+    $conn = null;
 
-    // 1) Intento con SP
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("CALL sp_Producto_Eliminar(?)");
+        $stmt = product_prepare($conn, "CALL sp_Producto_Eliminar(?)");
         $stmt->bind_param("i", $id);
-        $ok = $stmt->execute();
-        $stmt->close();
 
-        product_consume_results($conn);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Producto_Eliminar: {$stmt->error}");
+        }
+
+        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
 
-        if ($ok) {
-            return ['success' => true, 'mode' => 'hard', 'message' => 'Producto eliminado correctamente.'];
-        }
-        // si execute devolvió false, cae a soft delete
-    } catch (Exception $e) {
-        // log y cae a soft delete
+        return true;
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
+        return false;
     }
-
-    // 2) Fallback soft delete
-    $soft = softDeleteProduct($id);
-    if ($soft) {
-        return [
-            'success' => true,
-            'mode' => 'soft',
-            'message' => 'El producto está asociado a pedidos. Se desactivó (activo=0).'
-        ];
-    }
-
-    return ['success' => false, 'mode' => 'none', 'message' => 'No se pudo eliminar ni desactivar el producto.'];
 }
 
 /**
- * Buscar productos por término via SP.
+ * Buscar productos por término (nombre, descripcion, proveedor, categoría) via SP.
  */
 function searchProducts($term) {
     $out = [];
+    $conn = null;
+
     try {
         $conn = OpenConnection();
         $t    = '%' . $term . '%';
-        $stmt = $conn->prepare("CALL sp_Productos_Buscar(?)");
+        $stmt = product_prepare($conn, "CALL sp_Productos_Buscar(?)");
         $stmt->bind_param("s", $t);
-        $stmt->execute();
-        $res = $stmt->get_result();
 
-        while ($row = $res->fetch_assoc()) {
-            $row['precio']    = (float)$row['precio'];
-            $row['stock']     = (int)$row['stock'];
-            $row['es_equipo'] = (int)$row['es_equipo'];
-            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Productos_Buscar: {$stmt->error}");
+        }
+
+        $res = $stmt->get_result();
+        while ($res && ($row = $res->fetch_assoc())) {
+            $row['precio']    = (float)($row['precio'] ?? 0);
+            $row['stock']     = (int)($row['stock'] ?? 0);
+            $row['es_equipo'] = (int)($row['es_equipo'] ?? 0);
+            $row['imagen']    = normalizeProductImage($row['imagen'] ?? '', $row['nombre'] ?? '');
             $out[] = $row;
         }
 
         $stmt->close();
-        product_consume_results($conn);
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
-    } catch (Exception $e) {
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
     }
+
     return $out;
 }
 
 /**
- * Obtener productos por categoría via SP.
+ * Obtener productos por categoría via procedimiento almacenado.
  */
 function getProductsByCategory($cat) {
     $out = [];
+    $conn = null;
+
     try {
         $conn = OpenConnection();
-        $stmt = $conn->prepare("CALL sp_Productos_PorCategoria(?)");
+        $stmt = product_prepare($conn, "CALL sp_Productos_PorCategoria(?)");
         $stmt->bind_param("s", $cat);
-        $stmt->execute();
-        $res = $stmt->get_result();
 
-        while ($row = $res->fetch_assoc()) {
-            $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
-            $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
-            $row['es_equipo'] = isset($row['es_equipo']) ? (int)$row['es_equipo'] : null;
-            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed sp_Productos_PorCategoria: {$stmt->error}");
+        }
+
+        $res = $stmt->get_result();
+        while ($res && ($row = $res->fetch_assoc())) {
+            $row['precio']    = (float)($row['precio'] ?? 0);
+            $row['stock']     = (int)($row['stock'] ?? 0);
+            $row['es_equipo'] = (int)($row['es_equipo'] ?? 0);
+            $row['imagen']    = normalizeProductImage($row['imagen'] ?? '', $row['nombre'] ?? '');
             $out[] = $row;
         }
 
         $stmt->close();
-        product_consume_results($conn);
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
-    } catch (Exception $e) {
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
     }
+
     return $out;
 }
 
@@ -323,23 +363,34 @@ function getProductsByCategory($cat) {
  */
 function getEquipmentProducts() {
     $out = [];
+    $conn = null;
+
     try {
         $conn = OpenConnection();
         $res  = $conn->query("CALL sp_Productos_Equipos()");
+        if (!$res) {
+            throw new Exception("Query failed sp_Productos_Equipos: {$conn->error}");
+        }
 
         while ($row = $res->fetch_assoc()) {
-            $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
-            $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
-            $row['es_equipo'] = isset($row['es_equipo']) ? (int)$row['es_equipo'] : null;
-            $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
+            $row['precio']    = (float)($row['precio'] ?? 0);
+            $row['stock']     = (int)($row['stock'] ?? 0);
+            $row['es_equipo'] = (int)($row['es_equipo'] ?? 0);
+            $row['imagen']    = normalizeProductImage($row['imagen'] ?? '', $row['nombre'] ?? '');
             $out[] = $row;
         }
 
-        product_consume_results($conn);
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         CloseConnection($conn);
-    } catch (Exception $e) {
+
+    } catch (Throwable $e) {
         product_log_error($e);
+        if ($conn) {
+            try { while ($conn->more_results() && $conn->next_result()) {} } catch (Throwable $t) {}
+            try { CloseConnection($conn); } catch (Throwable $t) {}
+        }
     }
+
     return $out;
 }
 ?>
