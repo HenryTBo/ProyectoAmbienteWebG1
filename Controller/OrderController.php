@@ -1,30 +1,82 @@
 <?php
 // Controller/OrderController.php
 header('Content-Type: application/json; charset=utf-8');
-session_start();
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once __DIR__ . '/../Model/CartModel.php';
 require_once __DIR__ . '/../Model/OrderModel.php';
-require_once __DIR__ . '/../Model/ConexionModel.php'; // por si tu OrderModel lo requiere indirectamente
+require_once __DIR__ . '/../Model/ConexionModel.php';
 
-// ✅ Helper: listar pedidos por usuario (usa SP sp_Pedidos_Usuario_Listar)
+// ------------------------
+// Helpers de sesión/roles
+// ------------------------
+function currentUserId(): int {
+    return (int)($_SESSION["ConsecutivoUsuario"] ?? ($_SESSION["User"]["ConsecutivoUsuario"] ?? 0));
+}
+
+function currentPerfil(): string {
+    return (string)($_SESSION["ConsecutivoPerfil"] ?? ($_SESSION["User"]["ConsecutivoPerfil"] ?? "2"));
+}
+
+function requireLogin(): int {
+    $uid = currentUserId();
+    if ($uid <= 0) throw new Exception("Debe iniciar sesión.");
+    return $uid;
+}
+
+function requireAdmin(): void {
+    if (currentPerfil() !== "1") throw new Exception("Acceso denegado (solo administrador).");
+}
+
+// ------------------------
+// DB helpers (TU PROYECTO usa OpenConnection/CloseConnection)
+// ------------------------
+function db_open() {
+    if (function_exists('OpenConnection')) return OpenConnection();
+    if (function_exists('getConnection')) return getConnection(); // fallback
+    throw new Exception("No existe OpenConnection() en ConexionModel.php");
+}
+
+function db_close($conn): void {
+    if (!$conn) return;
+
+    try {
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    } catch (Throwable $e) { /* ignore */ }
+
+    try {
+        if (function_exists('CloseConnection')) {
+            CloseConnection($conn);
+        } else {
+            $conn->close();
+        }
+    } catch (Throwable $e) { /* ignore */ }
+}
+
+// ✅ Helper: listar pedidos por usuario (SP sp_Pedidos_Usuario_Listar)
 function listOrdersByUser(int $userId): array {
     if ($userId <= 0) return [];
-    $conn = getConnection();
 
+    $conn = db_open();
     $stmt = $conn->prepare("CALL sp_Pedidos_Usuario_Listar(?)");
-    if (!$stmt) throw new Exception("Prepare sp_Pedidos_Usuario_Listar failed: " . $conn->error);
+    if (!$stmt) {
+        $err = $conn->error;
+        db_close($conn);
+        throw new Exception("Prepare sp_Pedidos_Usuario_Listar failed: " . $err);
+    }
 
     $stmt->bind_param("i", $userId);
     $stmt->execute();
 
     $res = $stmt->get_result();
     $data = [];
-    while ($row = $res->fetch_assoc()) $data[] = $row;
+    while ($res && ($row = $res->fetch_assoc())) $data[] = $row;
 
     $stmt->close();
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-    $conn->close();
+    db_close($conn);
 
     return $data;
 }
@@ -39,9 +91,7 @@ try {
         // =========================
         case 'my':
         case 'list': {
-            $userId = (int)($_SESSION["ConsecutivoUsuario"] ?? ($_SESSION["User"]["ConsecutivoUsuario"] ?? 0));
-            if ($userId <= 0) throw new Exception("Debe iniciar sesión.");
-
+            $userId = requireLogin();
             $orders = listOrdersByUser($userId);
             echo json_encode(['success' => true, 'data' => $orders]);
             break;
@@ -51,10 +101,10 @@ try {
         // CLIENTE: FINALIZAR PEDIDO
         // =========================
         case 'create': {
-            $userId = (int)($_SESSION["ConsecutivoUsuario"] ?? ($_SESSION["User"]["ConsecutivoUsuario"] ?? 0));
-            if ($userId <= 0) throw new Exception("Debe iniciar sesión.");
+            $userId = requireLogin();
 
-            $entrega = $_POST['entrega_tipo'] ?? 'Tienda';
+            // ✅ Acepta ambos: entrega_tipo (nuevo) y entrega (compat)
+            $entrega = $_POST['entrega_tipo'] ?? ($_POST['entrega'] ?? 'Tienda');
             $direccion = $_POST['direccion'] ?? '';
 
             $cart = cart_totals();
@@ -73,10 +123,19 @@ try {
         // =========================
         // ADMIN: LISTAR PEDIDOS
         // =========================
-        case 'listAdmin': {
+        case 'listAdmin':
+        case 'all': {
+            requireAdmin();
+
             $orders = listOrdersAdmin();
-            $drivers = listDrivers();
-            echo json_encode(['success' => true, 'orders' => $orders, 'drivers' => $drivers]);
+            $drivers = function_exists('listDrivers') ? listDrivers() : [];
+
+            echo json_encode([
+                'success' => true,
+                'data' => $orders,
+                'orders' => $orders,
+                'drivers' => $drivers
+            ]);
             break;
         }
 
@@ -84,32 +143,37 @@ try {
         // ADMIN: ASIGNAR CHOFER
         // =========================
         case 'assignDriver': {
+            requireAdmin();
+
             $pedidoId = (int)($_POST['pedido_id'] ?? 0);
             $driverId = (int)($_POST['driver_id'] ?? 0);
             if ($pedidoId <= 0) throw new Exception("pedido_id inválido.");
             if ($driverId <= 0) throw new Exception("driver_id inválido.");
 
             $ok = assignDriver($pedidoId, $driverId);
-            echo json_encode(['success' => $ok]);
+            echo json_encode(['success' => (bool)$ok]);
             break;
         }
 
         // =========================
         // ADMIN: ACTUALIZAR ESTADO
         // =========================
-        case 'updateStatus': {
-            $pedidoId = (int)($_POST['pedido_id'] ?? 0);
+        case 'updateStatus':
+        case 'setStatus': {
+            requireAdmin();
+
+            $pedidoId = (int)($_POST['pedido_id'] ?? $_POST['id'] ?? 0);
             $estado = (string)($_POST['estado'] ?? '');
             if ($pedidoId <= 0) throw new Exception("pedido_id inválido.");
+            if (trim($estado) === '') throw new Exception("estado requerido.");
 
             $ok = updateOrderStatus($pedidoId, $estado);
-            echo json_encode(['success' => $ok]);
+            echo json_encode(['success' => (bool)$ok]);
             break;
         }
 
         // =========================
         // ADMIN/CLIENTE: DETALLE
-        // Compatibilidad: acepta ?pedido_id= o ?id=
         // =========================
         case 'details': {
             $pedidoId = (int)($_GET['pedido_id'] ?? $_GET['id'] ?? 0);
@@ -117,7 +181,6 @@ try {
 
             $detail = getOrderDetails($pedidoId);
 
-            // detail = ['header'=>..., 'items'=>...]
             $payload = [
                 'order' => $detail['header'] ?? null,
                 'items' => $detail['items'] ?? []
@@ -126,7 +189,6 @@ try {
             echo json_encode([
                 'success' => true,
                 'data' => $payload,
-                // compat: también por fuera (por si alguna vista lo usa)
                 'order' => $payload['order'],
                 'items' => $payload['items']
             ]);

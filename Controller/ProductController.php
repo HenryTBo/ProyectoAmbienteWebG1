@@ -188,10 +188,18 @@ try {
             $id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
             if ($id <= 0) throw new Exception("ID inválido");
 
-            $ok = deleteProduct($id);
-            if (!$ok) throw new Exception("No se pudo eliminar");
+            // AHORA deleteProduct devuelve array con mensaje
+            $res = deleteProduct($id);
 
-            echo json_encode(['success' => true]);
+            if (!is_array($res) || empty($res['success'])) {
+                throw new Exception($res['message'] ?? "No se pudo eliminar");
+            }
+
+            echo json_encode([
+                'success' => true,
+                'mode' => $res['mode'] ?? 'none',
+                'message' => $res['message'] ?? 'OK'
+            ]);
             break;
 
         default:
@@ -199,10 +207,7 @@ try {
     }
 
 } catch (Throwable $e) {
-    // IMPORTANTÍSIMO: capturar fatal errors también
     http_response_code(500);
-
-    // tu front busca json.message, no json.error
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

@@ -2,20 +2,54 @@
 // Model/OrderModel.php
 require_once __DIR__ . '/ConexionModel.php';
 
+/**
+ * Helpers DB (compatibles con tu proyecto)
+ */
+function order_db_open() {
+    if (function_exists('OpenConnection')) return OpenConnection();
+    if (function_exists('getConnection')) return getConnection(); // fallback si existiera
+    throw new Exception("No existe OpenConnection() en ConexionModel.php");
+}
+
+function order_db_close($conn): void {
+    if (!$conn) return;
+
+    try {
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    } catch (Throwable $e) { /* ignore */ }
+
+    try {
+        if (function_exists('CloseConnection')) {
+            CloseConnection($conn);
+        } else {
+            $conn->close();
+        }
+    } catch (Throwable $e) { /* ignore */ }
+}
+
+/**
+ * Listar conductores (admin)
+ */
 function listDrivers(): array {
-    $conn = getConnection();
+    $conn = order_db_open();
     $res = $conn->query("CALL sp_Conductores_Listar()");
-    if (!$res) throw new Exception("Error listDrivers: " . $conn->error);
+    if (!$res) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Error listDrivers: " . $err);
+    }
 
     $data = [];
     while ($row = $res->fetch_assoc()) $data[] = $row;
 
     $res->free();
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-    $conn->close();
+    order_db_close($conn);
     return $data;
 }
 
+/**
+ * Crear pedido (cliente)
+ */
 function createOrder(int $consecutivoUsuario, array $cartItems, string $entregaTipo, string $direccion): int {
     if ($consecutivoUsuario <= 0) throw new Exception("Usuario inválido para crear pedido.");
     if (empty($cartItems)) throw new Exception("El carrito está vacío.");
@@ -31,10 +65,10 @@ function createOrder(int $consecutivoUsuario, array $cartItems, string $entregaT
     // Calcular total
     $total = 0.0;
     foreach ($cartItems as $it) {
-        $total += (float)$it['subtotal'];
+        $total += (float)($it['subtotal'] ?? 0);
     }
 
-    $conn = getConnection();
+    $conn = order_db_open();
     $conn->begin_transaction();
 
     try {
@@ -72,12 +106,15 @@ function createOrder(int $consecutivoUsuario, array $cartItems, string $entregaT
         if (!$stmt3) throw new Exception("Prepare sp_PedidoDetalle_Agregar failed: " . $conn->error);
 
         foreach ($cartItems as $it) {
-            $idProducto = (int)$it['id'];
-            $cantidad = (int)$it['cantidad'];
-            $precio = (float)$it['precio'];
+            $idProducto = (int)($it['id'] ?? 0);
+            $cantidad   = (int)($it['cantidad'] ?? 0);
+            $precio     = (float)($it['precio'] ?? 0);
+
+            if ($idProducto <= 0 || $cantidad <= 0) continue;
 
             $stmt3->bind_param("iiid", $pedidoId, $idProducto, $cantidad, $precio);
             $stmt3->execute();
+
             while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         }
 
@@ -85,36 +122,50 @@ function createOrder(int $consecutivoUsuario, array $cartItems, string $entregaT
         while ($conn->more_results() && $conn->next_result()) { /* flush */ }
 
         $conn->commit();
-        $conn->close();
+        order_db_close($conn);
+
         return $pedidoId;
 
     } catch (Throwable $e) {
         $conn->rollback();
-        $conn->close();
+        order_db_close($conn);
         throw $e;
     }
 }
 
+/**
+ * Listar pedidos para admin
+ */
 function listOrdersAdmin(): array {
-    $conn = getConnection();
+    $conn = order_db_open();
     $res = $conn->query("CALL sp_Pedidos_Listar()");
-    if (!$res) throw new Exception("Error listOrdersAdmin: " . $conn->error);
+    if (!$res) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Error listOrdersAdmin: " . $err);
+    }
 
     $data = [];
     while ($row = $res->fetch_assoc()) $data[] = $row;
 
     $res->free();
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-    $conn->close();
+    order_db_close($conn);
     return $data;
 }
 
+/**
+ * Obtener detalle del pedido (header + items)
+ */
 function getOrderDetails(int $pedidoId): array {
-    $conn = getConnection();
+    $conn = order_db_open();
 
     // Header
     $stmt = $conn->prepare("CALL sp_Pedido_ObtenerPorId(?)");
-    if (!$stmt) throw new Exception("Prepare sp_Pedido_ObtenerPorId failed: " . $conn->error);
+    if (!$stmt) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Prepare sp_Pedido_ObtenerPorId failed: " . $err);
+    }
 
     $stmt->bind_param("i", $pedidoId);
     $stmt->execute();
@@ -125,65 +176,81 @@ function getOrderDetails(int $pedidoId): array {
     while ($conn->more_results() && $conn->next_result()) { /* flush */ }
 
     if (!$header) {
-        $conn->close();
+        order_db_close($conn);
         throw new Exception("Pedido no encontrado.");
     }
 
     // Detail
     $stmt2 = $conn->prepare("CALL sp_Pedido_Detalle(?)");
-    if (!$stmt2) throw new Exception("Prepare sp_Pedido_Detalle failed: " . $conn->error);
+    if (!$stmt2) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Prepare sp_Pedido_Detalle failed: " . $err);
+    }
 
     $stmt2->bind_param("i", $pedidoId);
     $stmt2->execute();
     $res2 = $stmt2->get_result();
 
     $items = [];
-    while ($row = $res2->fetch_assoc()) $items[] = $row;
+    while ($res2 && ($row = $res2->fetch_assoc())) $items[] = $row;
 
     $stmt2->close();
     while ($conn->more_results() && $conn->next_result()) { /* flush */ }
 
-    $conn->close();
+    order_db_close($conn);
 
     return [
         'header' => $header,
-        'items' => $items
+        'items'  => $items
     ];
 }
 
+/**
+ * Asignar conductor a pedido (admin)
+ */
 function assignDriver(int $pedidoId, int $driverId): bool {
-    $conn = getConnection();
+    $conn = order_db_open();
 
     // sp_Pedido_AsignarConductor(pIdPedido INT, pIdConductor INT)
     $stmt = $conn->prepare("CALL sp_Pedido_AsignarConductor(?, ?)");
-    if (!$stmt) throw new Exception("Prepare sp_Pedido_AsignarConductor failed: " . $conn->error);
+    if (!$stmt) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Prepare sp_Pedido_AsignarConductor failed: " . $err);
+    }
 
     $stmt->bind_param("ii", $pedidoId, $driverId);
     $ok = $stmt->execute();
 
     $stmt->close();
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-    $conn->close();
+    order_db_close($conn);
 
     return (bool)$ok;
 }
 
+/**
+ * Actualizar estado del pedido (admin)
+ */
 function updateOrderStatus(int $pedidoId, string $estado): bool {
     $estado = trim($estado);
     if ($estado === '') throw new Exception("Estado inválido.");
 
-    $conn = getConnection();
+    $conn = order_db_open();
 
     // sp_Pedido_ActualizarEstado(pIdPedido INT, pEstado VARCHAR(50))
     $stmt = $conn->prepare("CALL sp_Pedido_ActualizarEstado(?, ?)");
-    if (!$stmt) throw new Exception("Prepare sp_Pedido_ActualizarEstado failed: " . $conn->error);
+    if (!$stmt) {
+        $err = $conn->error;
+        order_db_close($conn);
+        throw new Exception("Prepare sp_Pedido_ActualizarEstado failed: " . $err);
+    }
 
     $stmt->bind_param("is", $pedidoId, $estado);
     $ok = $stmt->execute();
 
     $stmt->close();
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-    $conn->close();
+    order_db_close($conn);
 
     return (bool)$ok;
 }

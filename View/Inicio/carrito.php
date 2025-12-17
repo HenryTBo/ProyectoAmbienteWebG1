@@ -33,7 +33,7 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
                     <a class="btn btn-outline-light" href="productos.php">
                         <i class="fas fa-arrow-left me-1"></i> Seguir comprando
                     </a>
-                    <button id="btnVaciar" class="btn btn-outline-danger">
+                    <button id="btnVaciar" class="btn btn-outline-danger" type="button">
                         <i class="fas fa-trash me-1"></i> Vaciar
                     </button>
                 </div>
@@ -105,7 +105,7 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
                                 <textarea id="direccion" class="form-control" rows="3" placeholder="Indicá la dirección completa"></textarea>
                             </div>
 
-                            <button id="btnFinalizar" class="btn btn-primary w-100 mt-3">
+                            <button id="btnFinalizar" class="btn btn-primary w-100 mt-3" type="button">
                                 Finalizar pedido
                             </button>
 
@@ -160,7 +160,7 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
   }
 
   async function apiGet(url){
-    const r = await fetch(url, { method: 'GET' });
+    const r = await fetch(url, { method: 'GET', cache: 'no-store' });
     const t = await r.text();
     try { return JSON.parse(t); }
     catch(e){ throw new Error('Respuesta inválida del servidor: ' + t); }
@@ -194,7 +194,6 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
     elEmpty.classList.add('d-none');
     elItems.classList.remove('d-none');
 
-    // Contador (suma de cantidades)
     const count = items.reduce((a,b)=> a + Number(b.cantidad||0), 0);
     elCount.textContent = count;
 
@@ -232,7 +231,6 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
 
     elItems.innerHTML = html;
 
-    // events
     elItems.querySelectorAll('[data-inc]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const id = btn.getAttribute('data-inc');
@@ -326,23 +324,32 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
   btnFinalizar.addEventListener('click', async ()=>{
     try{
       clearError();
+      btnFinalizar.disabled = true;
+      btnFinalizar.textContent = 'Procesando...';
 
-      // Si eligió domicilio, pedir dirección
+      // Validación domicilio
       if(entrega.value === 'Domicilio' && !String(direccion.value||'').trim()){
         showError('Debés indicar la dirección para entrega a domicilio.');
         return;
       }
 
+      // ✅ Enviar ambos: entrega_tipo (backend) + entrega (compat)
       const payload = {
+        entrega_tipo: entrega.value,
         entrega: entrega.value,
         direccion: entrega.value === 'Domicilio' ? direccion.value.trim() : ''
       };
 
-      // Importante: este endpoint debe existir en tu proyecto
       const json = await apiPost('../../Controller/OrderController.php?action=create', payload);
 
       if(!json.success){
         throw new Error(json.message || 'No se pudo finalizar el pedido');
+      }
+
+      // Si el backend devuelve pedido_id, mejor validar
+      if(!json.pedido_id || Number(json.pedido_id) <= 0){
+        // no es fatal, pero ayuda a detectar SP que no retorna id
+        console.warn('Pedido creado sin pedido_id válido', json);
       }
 
       window.location.href = 'misPedidos.php';
@@ -350,6 +357,9 @@ if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
     }catch(err){
       showError(err.message || 'No se pudo finalizar el pedido');
       console.error(err);
+    } finally {
+      btnFinalizar.disabled = false;
+      btnFinalizar.textContent = 'Finalizar pedido';
     }
   });
 

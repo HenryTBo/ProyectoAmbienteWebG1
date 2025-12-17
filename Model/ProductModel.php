@@ -13,50 +13,58 @@ include_once __DIR__ . '/ConexionModel.php';
 function product_log_error($e) {
     if (function_exists('SaveError')) {
         try { SaveError($e); } catch (Exception $ex) { /* ignore */ }
+    } else {
+        // fallback
+        error_log('[ProductModel] ' . $e->getMessage());
     }
 }
 
 /**
+ * Consume resultados restantes de un SP para liberar el handler.
+ */
+function product_consume_results($conn) {
+    if (!$conn) return;
+    try {
+        while ($conn->more_results() && $conn->next_result()) { /* consume */ }
+    } catch (Throwable $e) { /* ignore */ }
+}
+
+/**
  * Normaliza la ruta de imagen para un producto.
- * - Si $img es URL (http/https) lo deja.
- * - Si es ruta absoluta (empieza por /) y existe en server, la usa.
- * - Si no existe, intenta buscar en /ProyectoAmbienteWebG1/public/images/<safe>.(jpg|png)
- * - Si nada, devuelve placeholder.
  */
 function normalizeProductImage($img, $nombre) {
     $placeholder = '/ProyectoAmbienteWebG1/public/images/placeholder.png';
-    // Si viene una URL
+    // URL
     if (!empty($img) && (strpos($img, 'http://') === 0 || strpos($img, 'https://') === 0)) {
         return $img;
     }
-    // Si es ruta absoluta en el sitio (ej: /assets/...)
+    // Ruta absoluta
     if (!empty($img) && strpos($img, '/') === 0) {
         $serverPath = $_SERVER['DOCUMENT_ROOT'] . $img;
         if (file_exists($serverPath)) return $img;
     }
 
-    // Construir nombre seguro a partir del nombre del producto
+    // Buscar por nombre
     $safe = preg_replace('/[^a-z0-9_\.]/i', '_', strtolower($nombre));
     $candidateJpg = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.jpg';
     if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidateJpg)) return $candidateJpg;
+
     $candidatePng = '/ProyectoAmbienteWebG1/public/images/' . $safe . '.png';
     if (file_exists($_SERVER['DOCUMENT_ROOT'] . $candidatePng)) return $candidatePng;
 
-    // Si el campo $img no estaba vacío pero no existe en disco, devolver placeholder
     return $placeholder;
 }
 
 /**
  * Lista todos los productos activos utilizando procedimiento almacenado.
- * @return array
  */
 function getAllProducts() {
     $out = [];
     try {
         $conn = OpenConnection();
-        // SP lista productos activos
         $sql = "CALL sp_Productos_ListarActivos()";
         $res = $conn->query($sql);
+
         while ($row = $res->fetch_assoc()) {
             $row['precio']    = (float)$row['precio'];
             $row['stock']     = (int)$row['stock'];
@@ -64,8 +72,8 @@ function getAllProducts() {
             $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
-        // Consumir resultados adicionales para liberar el handler
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -84,11 +92,12 @@ function getProductById($id) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $res = $stmt->get_result();
-        $row = $res->fetch_assoc();
+        $row = $res ? $res->fetch_assoc() : null;
         $stmt->close();
-        // consumir resultados adicionales
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
+
         if ($row) {
             $row['precio']    = (float)$row['precio'];
             $row['stock']     = (int)$row['stock'];
@@ -110,6 +119,7 @@ function createProduct($data) {
         $conn     = OpenConnection();
         $activo   = isset($data['activo']) ? intval($data['activo']) : 1;
         $es_equipo= isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
+
         $stmt = $conn->prepare("CALL sp_Producto_Crear(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
             "sssdisssii",
@@ -128,8 +138,10 @@ function createProduct($data) {
         $res = $stmt->get_result();
         $row = $res ? $res->fetch_assoc() : null;
         $stmt->close();
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
+
         return ($row && isset($row['id'])) ? intval($row['id']) : false;
     } catch (Exception $e) {
         product_log_error($e);
@@ -146,6 +158,7 @@ function updateProduct($id, $data) {
         $conn      = OpenConnection();
         $es_equipo = isset($data['es_equipo']) ? intval($data['es_equipo']) : 0;
         $activo    = isset($data['activo']) ? intval($data['activo']) : 1;
+
         $stmt = $conn->prepare("CALL sp_Producto_Actualizar(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
             "isssdisssii",
@@ -161,10 +174,13 @@ function updateProduct($id, $data) {
             $es_equipo,
             $activo
         );
+
         $ok = $stmt->execute();
         $stmt->close();
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
+
         return $ok;
     } catch (Exception $e) {
         product_log_error($e);
@@ -173,27 +189,78 @@ function updateProduct($id, $data) {
 }
 
 /**
- * Desactivar (soft delete) producto mediante procedimiento almacenado.
+ * Soft delete directo (fallback cuando hay FK por pedidos).
+ */
+function softDeleteProduct($id) {
+    $id = intval($id);
+    try {
+        $conn = OpenConnection();
+
+        // Ajusta el nombre de la tabla si en tu BD no se llama "productos"
+        $stmt = $conn->prepare("UPDATE productos SET activo = 0 WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        product_consume_results($conn);
+        CloseConnection($conn);
+
+        return $ok;
+    } catch (Exception $e) {
+        product_log_error($e);
+        return false;
+    }
+}
+
+/**
+ * Desactivar/eliminar producto.
+ * - Intenta SP sp_Producto_Eliminar
+ * - Si falla (FK/pedidos), hace soft delete: activo=0
+ *
+ * Retorna un array:
+ *  ['success'=>bool, 'mode'=>'hard'|'soft'|'none', 'message'=>string]
  */
 function deleteProduct($id) {
     $id = intval($id);
+    if ($id <= 0) {
+        return ['success' => false, 'mode' => 'none', 'message' => 'ID inválido'];
+    }
+
+    // 1) Intento con SP
     try {
         $conn = OpenConnection();
         $stmt = $conn->prepare("CALL sp_Producto_Eliminar(?)");
         $stmt->bind_param("i", $id);
         $ok = $stmt->execute();
         $stmt->close();
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
-        return $ok;
+
+        if ($ok) {
+            return ['success' => true, 'mode' => 'hard', 'message' => 'Producto eliminado correctamente.'];
+        }
+        // si execute devolvió false, cae a soft delete
     } catch (Exception $e) {
+        // log y cae a soft delete
         product_log_error($e);
-        return false;
     }
+
+    // 2) Fallback soft delete
+    $soft = softDeleteProduct($id);
+    if ($soft) {
+        return [
+            'success' => true,
+            'mode' => 'soft',
+            'message' => 'El producto está asociado a pedidos. Se desactivó (activo=0).'
+        ];
+    }
+
+    return ['success' => false, 'mode' => 'none', 'message' => 'No se pudo eliminar ni desactivar el producto.'];
 }
 
 /**
- * Buscar productos por término (nombre, descripcion, proveedor, categoría) via SP.
+ * Buscar productos por término via SP.
  */
 function searchProducts($term) {
     $out = [];
@@ -204,6 +271,7 @@ function searchProducts($term) {
         $stmt->bind_param("s", $t);
         $stmt->execute();
         $res = $stmt->get_result();
+
         while ($row = $res->fetch_assoc()) {
             $row['precio']    = (float)$row['precio'];
             $row['stock']     = (int)$row['stock'];
@@ -211,8 +279,9 @@ function searchProducts($term) {
             $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
+
         $stmt->close();
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+        product_consume_results($conn);
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -221,7 +290,7 @@ function searchProducts($term) {
 }
 
 /**
- * Obtener productos por categoría via procedimiento almacenado.
+ * Obtener productos por categoría via SP.
  */
 function getProductsByCategory($cat) {
     $out = [];
@@ -231,6 +300,7 @@ function getProductsByCategory($cat) {
         $stmt->bind_param("s", $cat);
         $stmt->execute();
         $res = $stmt->get_result();
+
         while ($row = $res->fetch_assoc()) {
             $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
             $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
@@ -238,8 +308,9 @@ function getProductsByCategory($cat) {
             $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
+
         $stmt->close();
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+        product_consume_results($conn);
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
@@ -255,6 +326,7 @@ function getEquipmentProducts() {
     try {
         $conn = OpenConnection();
         $res  = $conn->query("CALL sp_Productos_Equipos()");
+
         while ($row = $res->fetch_assoc()) {
             $row['precio']    = isset($row['precio']) ? (float)$row['precio'] : null;
             $row['stock']     = isset($row['stock']) ? (int)$row['stock'] : null;
@@ -262,7 +334,8 @@ function getEquipmentProducts() {
             $row['imagen']    = normalizeProductImage($row['imagen'], $row['nombre']);
             $out[] = $row;
         }
-        while ($conn->more_results() && $conn->next_result()) { /* consume rest */ }
+
+        product_consume_results($conn);
         CloseConnection($conn);
     } catch (Exception $e) {
         product_log_error($e);
