@@ -1,163 +1,189 @@
 <?php
-// OrderModel.php
-// Versión revisada con mejor manejo de errores para creación de pedidos
-
+// Model/OrderModel.php
 require_once __DIR__ . '/ConexionModel.php';
 
-/**
- * Registra errores relacionados con pedidos en la tabla tberror
- */
-function order_log_error($e) {
+function listDrivers(): array {
+    $conn = getConnection();
+    $res = $conn->query("CALL sp_Conductores_Listar()");
+    if (!$res) throw new Exception("Error listDrivers: " . $conn->error);
+
+    $data = [];
+    while ($row = $res->fetch_assoc()) $data[] = $row;
+
+    $res->free();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    $conn->close();
+    return $data;
+}
+
+function createOrder(int $consecutivoUsuario, array $cartItems, string $entregaTipo, string $direccion): int {
+    if ($consecutivoUsuario <= 0) throw new Exception("Usuario inválido para crear pedido.");
+    if (empty($cartItems)) throw new Exception("El carrito está vacío.");
+
+    $entregaTipo = trim($entregaTipo ?: 'Tienda');
+    if ($entregaTipo !== 'Tienda' && $entregaTipo !== 'Domicilio') $entregaTipo = 'Tienda';
+
+    $direccion = trim($direccion);
+    if ($entregaTipo === 'Domicilio' && $direccion === '') {
+        throw new Exception("La dirección es obligatoria si la entrega es a domicilio.");
+    }
+
+    // Calcular total
+    $total = 0.0;
+    foreach ($cartItems as $it) {
+        $total += (float)$it['subtotal'];
+    }
+
+    $conn = getConnection();
+    $conn->begin_transaction();
+
     try {
-        if ($e instanceof Throwable) {
-            $msg = '[PEDIDOS] ' . $e->getMessage();
-        } else {
-            $msg = '[PEDIDOS] ' . (string)$e;
+        // 1) Crear pedido
+        // sp_Pedidos_Crear(pConsecutivoUsuario INT, pEstado VARCHAR(50), pTotal DECIMAL(12,2))
+        $stmt = $conn->prepare("CALL sp_Pedidos_Crear(?, ?, ?)");
+        if (!$stmt) throw new Exception("Prepare sp_Pedidos_Crear failed: " . $conn->error);
+
+        $estado = 'Pendiente';
+        $stmt->bind_param("isd", $consecutivoUsuario, $estado, $total);
+        $stmt->execute();
+
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $pedidoId = (int)($row['id'] ?? 0);
+
+        $stmt->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+
+        if ($pedidoId <= 0) throw new Exception("No se pudo obtener ID del pedido.");
+
+        // 2) Actualizar entrega
+        // sp_Pedido_ActualizarEntrega(pIdPedido INT, pEntregaTipo VARCHAR(20), pDireccion VARCHAR(255))
+        $stmt2 = $conn->prepare("CALL sp_Pedido_ActualizarEntrega(?, ?, ?)");
+        if (!$stmt2) throw new Exception("Prepare sp_Pedido_ActualizarEntrega failed: " . $conn->error);
+
+        $stmt2->bind_param("iss", $pedidoId, $entregaTipo, $direccion);
+        $stmt2->execute();
+        $stmt2->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+
+        // 3) Insertar detalle
+        // sp_PedidoDetalle_Agregar(pIdPedido INT, pIdProducto INT, pCantidad INT, pPrecio DECIMAL(12,2))
+        $stmt3 = $conn->prepare("CALL sp_PedidoDetalle_Agregar(?, ?, ?, ?)");
+        if (!$stmt3) throw new Exception("Prepare sp_PedidoDetalle_Agregar failed: " . $conn->error);
+
+        foreach ($cartItems as $it) {
+            $idProducto = (int)$it['id'];
+            $cantidad = (int)$it['cantidad'];
+            $precio = (float)$it['precio'];
+
+            $stmt3->bind_param("iiid", $pedidoId, $idProducto, $cantidad, $precio);
+            $stmt3->execute();
+            while ($conn->more_results() && $conn->next_result()) { /* flush */ }
         }
 
-        if (function_exists('SaveError')) {
-            // SaveError debe llamar internamente al SP RegistrarError
-            SaveError($msg);
-        }
-    } catch (Throwable $e2) {
-        // No romper la ejecución si el log falla
+        $stmt3->close();
+        while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+
+        $conn->commit();
+        $conn->close();
+        return $pedidoId;
+
+    } catch (Throwable $e) {
+        $conn->rollback();
+        $conn->close();
+        throw $e;
     }
 }
 
-/**
- * Crea un pedido con sus detalles usando procedimientos almacenados.
- *
- * @param int   $userId  ConsecutivoUsuario de tbusuario
- * @param array $items   Cada item: ['id_producto' => int, 'cantidad' => int, 'precio' => float]
- * @return int           ID del pedido creado
- * @throws Exception     Si algo falla, para que el controlador pueda mostrar el motivo real
- */
-function createOrder($userId, $items) {
-    // Validaciones básicas
-    if (!$items || !is_array($items) || empty($items)) {
-        throw new Exception('No hay artículos en el carrito.');
+function listOrdersAdmin(): array {
+    $conn = getConnection();
+    $res = $conn->query("CALL sp_Pedidos_Listar()");
+    if (!$res) throw new Exception("Error listOrdersAdmin: " . $conn->error);
+
+    $data = [];
+    while ($row = $res->fetch_assoc()) $data[] = $row;
+
+    $res->free();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    $conn->close();
+    return $data;
+}
+
+function getOrderDetails(int $pedidoId): array {
+    $conn = getConnection();
+
+    // Header
+    $stmt = $conn->prepare("CALL sp_Pedido_ObtenerPorId(?)");
+    if (!$stmt) throw new Exception("Prepare sp_Pedido_ObtenerPorId failed: " . $conn->error);
+
+    $stmt->bind_param("i", $pedidoId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $header = $res ? $res->fetch_assoc() : null;
+
+    $stmt->close();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+
+    if (!$header) {
+        $conn->close();
+        throw new Exception("Pedido no encontrado.");
     }
 
-    $userId = (int)$userId;
-    if ($userId <= 0) {
-        throw new Exception('Usuario no válido al crear el pedido. Vuelva a iniciar sesión.');
-    }
+    // Detail
+    $stmt2 = $conn->prepare("CALL sp_Pedido_Detalle(?)");
+    if (!$stmt2) throw new Exception("Prepare sp_Pedido_Detalle failed: " . $conn->error);
 
-    // Calcular total del pedido
-    $total = 0.0;
-    foreach ($items as $it) {
-        $cantidad = isset($it['cantidad']) ? (float)$it['cantidad'] : 0;
-        $precio   = isset($it['precio']) ? (float)$it['precio'] : 0;
-        $total   += $cantidad * $precio;
-    }
+    $stmt2->bind_param("i", $pedidoId);
+    $stmt2->execute();
+    $res2 = $stmt2->get_result();
 
-    if ($total <= 0) {
-        throw new Exception('El total del pedido es 0. Verifique las cantidades.');
-    }
+    $items = [];
+    while ($row = $res2->fetch_assoc()) $items[] = $row;
 
-    $conn = OpenConnection();
+    $stmt2->close();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
 
-    // Hacer que mysqli lance excepciones en caso de error
-    if (function_exists('mysqli_report')) {
-        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-    }
+    $conn->close();
 
-    try {
-        $conn->begin_transaction();
+    return [
+        'header' => $header,
+        'items' => $items
+    ];
+}
 
-        /**
-         * 1) Crear la cabecera del pedido con el SP sp_Pedidos_Crear
-         */
-        $estadoInicial = 'Pendiente';
-        $stmtPedido = $conn->prepare('CALL sp_Pedidos_Crear(?, ?, ?)');
-        if (!$stmtPedido) {
-            throw new Exception('Error al preparar sp_Pedidos_Crear: ' . $conn->error);
-        }
+function assignDriver(int $pedidoId, int $driverId): bool {
+    $conn = getConnection();
 
-        // tipos: i = int, s = string, d = double
-        $stmtPedido->bind_param('isd', $userId, $estadoInicial, $total);
-        $stmtPedido->execute();
+    // sp_Pedido_AsignarConductor(pIdPedido INT, pIdConductor INT)
+    $stmt = $conn->prepare("CALL sp_Pedido_AsignarConductor(?, ?)");
+    if (!$stmt) throw new Exception("Prepare sp_Pedido_AsignarConductor failed: " . $conn->error);
 
-        // Intentar obtener el id devuelto por el SP
-        $row = null;
-        if (method_exists($stmtPedido, 'get_result')) {
-            $result = $stmtPedido->get_result();
-            if ($result) {
-                $row = $result->fetch_assoc();
-            }
-        }
+    $stmt->bind_param("ii", $pedidoId, $driverId);
+    $ok = $stmt->execute();
 
-        $stmtPedido->close();
-        // Limpiar posibles result sets adicionales del CALL
-        while ($conn->more_results() && $conn->next_result()) {
-            /* limpiar */
-        }
+    $stmt->close();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    $conn->close();
 
-        // Si el SP no devolvió el id, usar LAST_INSERT_ID() como respaldo
-        if (!$row || !isset($row['id']) || !$row['id']) {
-            $res2 = $conn->query('SELECT LAST_INSERT_ID() AS id');
-            $row2 = $res2 ? $res2->fetch_assoc() : null;
-            if ($row2 && !empty($row2['id'])) {
-                $row = $row2;
-            }
-        }
+    return (bool)$ok;
+}
 
-        if (!$row || !isset($row['id']) || !$row['id']) {
-            throw new Exception(
-                'sp_Pedidos_Crear no devolvió un ID válido. Último error MySQL: ' . $conn->error
-            );
-        }
+function updateOrderStatus(int $pedidoId, string $estado): bool {
+    $estado = trim($estado);
+    if ($estado === '') throw new Exception("Estado inválido.");
 
-        $pedidoId = (int)$row['id'];
+    $conn = getConnection();
 
-        /**
-         * 2) Insertar los detalles del pedido con el SP sp_PedidoDetalle_Agregar
-         */
-        foreach ($items as $it) {
-            $idProd   = isset($it['id_producto']) ? (int)$it['id_producto'] : 0;
-            $cantidad = isset($it['cantidad']) ? (int)$it['cantidad'] : 0;
-            $precio   = isset($it['precio']) ? (float)$it['precio'] : 0;
+    // sp_Pedido_ActualizarEstado(pIdPedido INT, pEstado VARCHAR(50))
+    $stmt = $conn->prepare("CALL sp_Pedido_ActualizarEstado(?, ?)");
+    if (!$stmt) throw new Exception("Prepare sp_Pedido_ActualizarEstado failed: " . $conn->error);
 
-            if ($idProd <= 0) {
-                throw new Exception('Producto inválido en el pedido.');
-            }
-            if ($cantidad <= 0) {
-                throw new Exception('Cantidad inválida para el producto ' . $idProd);
-            }
+    $stmt->bind_param("is", $pedidoId, $estado);
+    $ok = $stmt->execute();
 
-            $stmtDet = $conn->prepare('CALL sp_PedidoDetalle_Agregar(?, ?, ?, ?)');
-            if (!$stmtDet) {
-                throw new Exception('Error al preparar sp_PedidoDetalle_Agregar: ' . $conn->error);
-            }
+    $stmt->close();
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    $conn->close();
 
-            $stmtDet->bind_param('iiid', $pedidoId, $idProd, $cantidad, $precio);
-            $stmtDet->execute();
-            $stmtDet->close();
-
-            // Limpiar result sets del CALL
-            while ($conn->more_results() && $conn->next_result()) {
-                /* limpiar */
-            }
-        }
-
-        // Si todo va bien, confirmamos la transacción
-        $conn->commit();
-        CloseConnection($conn);
-
-        return $pedidoId;
-
-    } catch (Exception $e) {
-        // Deshacer todo y propagar el error real
-        try {
-            if ($conn) {
-                $conn->rollback();
-            }
-        } catch (Throwable $t) {
-            // ignorar
-        }
-
-        order_log_error($e);
-        CloseConnection($conn);
-        throw $e;
-    }
+    return (bool)$ok;
 }

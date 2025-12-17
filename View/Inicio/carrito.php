@@ -1,15 +1,9 @@
 <?php
-/*
-    Vista: Carrito de compras
-    - Muestra los productos agregados al carrito desde localStorage (jj_cart).
-    - Permite modificar la cantidad, eliminar artículos y procesar el pedido.
-    - Al finalizar la compra se envía al OrderController para crear un pedido.
-*/
 session_start();
 include_once __DIR__ . '/../layoutInterno.php';
 
-// Solo usuarios autenticados pueden ver el carrito
-if (!isset($_SESSION["ConsecutivoUsuario"])) {
+// Redirige a inicio de sesión si no hay usuario
+if (!isset($_SESSION["ConsecutivoUsuario"]) && !isset($_SESSION["User"])) {
     header("Location: InicioSesion.php");
     exit;
 }
@@ -17,198 +11,351 @@ if (!isset($_SESSION["ConsecutivoUsuario"])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
     <?php showCss(); ?>
-    <link href="../css/pedidos.css?v=2" rel="stylesheet">
-    <style>
-        /* Estilos adicionales para la tabla del carrito */
-        #cartTable thead {
-            background-color: var(--jj-blue-deep);
-            color: var(--jj-cream-light);
-        }
-        #cartTable td, #cartTable th {
-            vertical-align: middle;
-        }
-        .cart-qty {
-            max-width: 80px;
-        }
-        .toast {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            background-color: var(--jj-blue-deep);
-            color: var(--jj-cream-light);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 9999;
-            font-size: 0.9rem;
-        }
-        .toast.visible { opacity: 1; }
-    </style>
-    <title>Mi carrito | Distribuidora JJ</title>
+    <link rel="stylesheet" href="../css/carrito.css">
 </head>
+
 <body class="sb-nav-fixed">
-    <?php showNavBar(); ?>
-    <div id="layoutSidenav">
-        <?php showSideBar(); ?>
-        <div id="layoutSidenav_content">
-            <main class="p-4 container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h2 class="page-title">Mi carrito</h2>
-                        <p class="page-sub">Revisa los artículos que has agregado</p>
+<?php showNavBar(); ?>
+
+<div id="layoutSidenav">
+    <?php showSideBar(); ?>
+
+    <div id="layoutSidenav_content">
+        <main class="container-fluid px-4">
+
+            <div class="cart-hero mt-4 mb-4">
+                <div>
+                    <h2 class="cart-title">Carrito</h2>
+                    <p class="cart-subtitle">Revisá tus productos y finalizá el pedido</p>
+                </div>
+                <div class="cart-hero-actions">
+                    <a class="btn btn-outline-light" href="productos.php">
+                        <i class="fas fa-arrow-left me-1"></i> Seguir comprando
+                    </a>
+                    <button id="btnVaciar" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Vaciar
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Productos -->
+                <div class="col-lg-8">
+                    <div class="card cart-card">
+                        <div class="card-header cart-card-header">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="fw-bold">
+                                    <i class="fas fa-shopping-basket me-2"></i> Productos
+                                </div>
+                                <div class="text-muted">
+                                    Ítems: <span id="itemsCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div id="cartError" class="alert alert-danger d-none"></div>
+                            <div id="cartLoading" class="text-muted">Cargando...</div>
+
+                            <div id="cartEmpty" class="cart-empty d-none">
+                                <h4>Tu carrito está vacío</h4>
+                                <p class="text-muted mb-3">Agregá productos desde la tienda para verlos acá.</p>
+                                <a class="btn btn-primary" href="productos.php">
+                                    <i class="fas fa-store me-1"></i> Ir a productos
+                                </a>
+                            </div>
+
+                            <div id="cartItems" class="d-none"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="table-responsive mb-4">
-                    <table class="table table-striped" id="cartTable">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Precio</th>
-                                <th>Cantidad</th>
-                                <th>Subtotal</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <h5>Total: <span id="cartTotal">₡ 0</span></h5>
-                </div>
-                <div class="d-flex justify-content-end">
-                    <a href="productos.php" class="btn btn-secondary me-2">Seguir comprando</a>
-                    <button id="btnFinalizar" class="btn btn-primary">Finalizar pedido</button>
-                </div>
-            </main>
-            <?php showFooter(); ?>
-        </div>
-    </div>
-    <?php showJs(); ?>
-    <script>
-    (function(){
-        let products = [];
-        let cart = [];
-        const tbody = document.querySelector('#cartTable tbody');
-        const totalEl = document.getElementById('cartTotal');
-        const btnFinalizar = document.getElementById('btnFinalizar');
 
-        function loadCatalogo() {
-            return fetch('../../Controller/ProductController.php?action=list')
-                .then(r => r.json())
-                .then(json => json.success ? json.data : []);
-        }
-        function loadCart() {
-            try {
-                cart = JSON.parse(localStorage.getItem('jj_cart') || '[]');
-            } catch (e) {
-                cart = [];
-            }
-        }
-        function saveCart() {
-            localStorage.setItem('jj_cart', JSON.stringify(cart));
-        }
-        function renderCart() {
-            tbody.innerHTML = '';
-            let total = 0;
-            if (cart.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tu carrito está vacío.</td></tr>';
-                totalEl.textContent = '₡ 0';
-                return;
-            }
-            cart.forEach((item, idx) => {
-                const p = products.find(pr => pr.id == item.id);
-                if (!p) return;
-                const subtotal = p.precio * item.qty;
-                total += subtotal;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${p.nombre}</td>
-                    <td>₡ ${parseFloat(p.precio).toLocaleString('es-CR', {minimumFractionDigits:0})}</td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm cart-qty" data-index="${idx}" value="${item.qty}" min="1" />
-                    </td>
-                    <td>₡ ${parseFloat(subtotal).toLocaleString('es-CR', {minimumFractionDigits:0})}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger btn-remove" data-index="${idx}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            totalEl.textContent = '₡ ' + total.toLocaleString('es-CR', {minimumFractionDigits:0});
-        }
-        function updateQuantity(index, qty) {
-            qty = parseInt(qty);
-            if (isNaN(qty) || qty < 1) qty = 1;
-            cart[index].qty = qty;
-            saveCart();
-            renderCart();
-        }
-        function removeItem(index) {
-            cart.splice(index, 1);
-            saveCart();
-            renderCart();
-        }
-        function finalizarPedido() {
-            if (cart.length === 0) {
-                alert('Tu carrito está vacío');
-                return;
-            }
-            // Crear array de items con id_producto y cantidad
-            const items = cart.map(it => ({ id_producto: it.id, cantidad: it.qty }));
-            const formData = new FormData();
-            formData.append('items', JSON.stringify(items));
-            fetch('../../Controller/OrderController.php?action=create', {
-                method: 'POST',
-                body: formData
-            }).then(r => r.json())
-              .then(json => {
-                  if (json.success) {
-                      // Limpiar carrito y mostrar toast
-                      localStorage.removeItem('jj_cart');
-                      const t = document.createElement('div');
-                      t.className = 'toast';
-                      t.innerText = 'Pedido generado correctamente';
-                      document.body.appendChild(t);
-                      setTimeout(() => t.classList.add('visible'), 10);
-                      setTimeout(() => {
-                          t.classList.remove('visible');
-                          setTimeout(() => t.remove(), 300);
-                          window.location.href = 'misPedidos.php';
-                      }, 1500);
-                  } else {
-                      alert(json.error || 'No se pudo crear el pedido');
-                  }
-              })
-              .catch(err => alert('Error al crear el pedido: ' + err.message));
-        }
-        // Eventos del DOM
-        tbody.addEventListener('input', function(e) {
-            const inp = e.target.closest('input.cart-qty');
-            if (inp) {
-                const index = parseInt(inp.getAttribute('data-index'));
-                updateQuantity(index, inp.value);
-            }
-        });
-        tbody.addEventListener('click', function(e) {
-            const btn = e.target.closest('.btn-remove');
-            if (btn) {
-                const index = parseInt(btn.getAttribute('data-index'));
-                removeItem(index);
-            }
-        });
-        btnFinalizar.addEventListener('click', finalizarPedido);
-        // Inicializar catálogo y carrito
-        loadCatalogo().then(data => {
-            products = data;
-            loadCart();
-            renderCart();
-        });
-    })();
-    </script>
+                <!-- Resumen -->
+                <div class="col-lg-4">
+                    <div class="card cart-card sticky-summary">
+                        <div class="card-header cart-card-header">
+                            <div class="fw-bold"><i class="fas fa-receipt me-2"></i> Resumen</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <strong id="subtotal">₡0,00</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Envío</span>
+                                <strong id="envio">₡0,00</strong>
+                            </div>
+                            <hr>
+                            <div class="summary-row total">
+                                <span>Total</span>
+                                <strong id="total">₡0,00</strong>
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="form-label fw-bold">Entrega</label>
+                                <select id="entrega" class="form-select">
+                                    <option value="Tienda">Tienda</option>
+                                    <option value="Domicilio">Domicilio</option>
+                                </select>
+                            </div>
+
+                            <div class="mt-3 d-none" id="direccionWrap">
+                                <label class="form-label fw-bold">Dirección</label>
+                                <textarea id="direccion" class="form-control" rows="3" placeholder="Indicá la dirección completa"></textarea>
+                            </div>
+
+                            <button id="btnFinalizar" class="btn btn-primary w-100 mt-3">
+                                Finalizar pedido
+                            </button>
+
+                            <p class="text-muted small mt-2 mb-0">
+                                Si elegís domicilio, asegurate de indicar la dirección.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <?php showFooter(); ?>
+    </div>
+</div>
+
+<?php showJs(); ?>
+
+<script>
+(function(){
+
+  const money = (n) => {
+    const val = Number(n || 0);
+    return '₡' + val.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const elLoading = document.getElementById('cartLoading');
+  const elError = document.getElementById('cartError');
+  const elEmpty = document.getElementById('cartEmpty');
+  const elItems = document.getElementById('cartItems');
+  const elCount = document.getElementById('itemsCount');
+
+  const elSubtotal = document.getElementById('subtotal');
+  const elEnvio = document.getElementById('envio');
+  const elTotal = document.getElementById('total');
+
+  const btnVaciar = document.getElementById('btnVaciar');
+  const btnFinalizar = document.getElementById('btnFinalizar');
+
+  const entrega = document.getElementById('entrega');
+  const direccionWrap = document.getElementById('direccionWrap');
+  const direccion = document.getElementById('direccion');
+
+  function showError(msg){
+    elError.textContent = msg;
+    elError.classList.remove('d-none');
+  }
+  function clearError(){
+    elError.classList.add('d-none');
+    elError.textContent = '';
+  }
+
+  async function apiGet(url){
+    const r = await fetch(url, { method: 'GET' });
+    const t = await r.text();
+    try { return JSON.parse(t); }
+    catch(e){ throw new Error('Respuesta inválida del servidor: ' + t); }
+  }
+
+  async function apiPost(url, bodyObj){
+    const fd = new FormData();
+    Object.keys(bodyObj || {}).forEach(k => fd.append(k, bodyObj[k]));
+    const r = await fetch(url, { method: 'POST', body: fd });
+    const t = await r.text();
+    try { return JSON.parse(t); }
+    catch(e){ throw new Error('Respuesta inválida del servidor: ' + t); }
+  }
+
+  function renderCart(data){
+    const items = (data && data.items) ? data.items : [];
+
+    elLoading.classList.add('d-none');
+    clearError();
+
+    if(items.length === 0){
+      elItems.classList.add('d-none');
+      elEmpty.classList.remove('d-none');
+      elCount.textContent = '0';
+      elSubtotal.textContent = money(0);
+      elEnvio.textContent = money(0);
+      elTotal.textContent = money(0);
+      return;
+    }
+
+    elEmpty.classList.add('d-none');
+    elItems.classList.remove('d-none');
+
+    // Contador (suma de cantidades)
+    const count = items.reduce((a,b)=> a + Number(b.cantidad||0), 0);
+    elCount.textContent = count;
+
+    elSubtotal.textContent = money(data.subtotal);
+    elEnvio.textContent = money(data.envio);
+    elTotal.textContent = money(data.total);
+
+    let html = '';
+    items.forEach(it => {
+      const id = it.id;
+      html += `
+        <div class="cart-item">
+          <img class="cart-item-img" src="${it.imagen}" alt="">
+          <div class="cart-item-body">
+            <div class="cart-item-title">${it.nombre}</div>
+            <div class="cart-item-meta">${money(it.precio)} c/u</div>
+
+            <div class="cart-item-actions">
+              <div class="qty">
+                <button class="qty-btn" data-dec="${id}">-</button>
+                <input class="qty-input" value="${it.cantidad}" data-qty="${id}" />
+                <button class="qty-btn" data-inc="${id}">+</button>
+              </div>
+
+              <div class="cart-item-subtotal">${money(it.subtotal)}</div>
+
+              <button class="btn btn-outline-danger btn-sm" data-del="${id}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    elItems.innerHTML = html;
+
+    // events
+    elItems.querySelectorAll('[data-inc]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-inc');
+        const input = elItems.querySelector(`[data-qty="${id}"]`);
+        const qty = Math.max(1, Number(input.value||1) + 1);
+        await setQty(id, qty);
+      });
+    });
+
+    elItems.querySelectorAll('[data-dec]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-dec');
+        const input = elItems.querySelector(`[data-qty="${id}"]`);
+        const qty = Math.max(1, Number(input.value||1) - 1);
+        await setQty(id, qty);
+      });
+    });
+
+    elItems.querySelectorAll('[data-qty]').forEach(input=>{
+      input.addEventListener('change', async ()=>{
+        const id = input.getAttribute('data-qty');
+        const qty = Math.max(1, Number(input.value||1));
+        await setQty(id, qty);
+      });
+    });
+
+    elItems.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-del');
+        await removeItem(id);
+      });
+    });
+  }
+
+  async function loadCart(){
+    elLoading.classList.remove('d-none');
+    clearError();
+
+    try{
+      const json = await apiGet('../../Controller/CartController.php?action=list');
+      if(!json.success) throw new Error(json.message || 'No se pudo cargar el carrito');
+      renderCart(json.data);
+    }catch(err){
+      elLoading.classList.add('d-none');
+      showError(err.message || 'No se pudo cargar el carrito');
+      console.error(err);
+    }
+  }
+
+  async function setQty(id, qty){
+    try{
+      const json = await apiPost('../../Controller/CartController.php?action=setQty', { id, qty });
+      if(!json.success) throw new Error(json.message || 'No se pudo actualizar');
+      await loadCart();
+    }catch(err){
+      showError(err.message || 'No se pudo actualizar');
+      console.error(err);
+    }
+  }
+
+  async function removeItem(id){
+    try{
+      const json = await apiPost('../../Controller/CartController.php?action=remove', { id });
+      if(!json.success) throw new Error(json.message || 'No se pudo eliminar');
+      await loadCart();
+    }catch(err){
+      showError(err.message || 'No se pudo eliminar');
+      console.error(err);
+    }
+  }
+
+  async function clearCart(){
+    try{
+      const json = await apiPost('../../Controller/CartController.php?action=clear', {});
+      if(!json.success) throw new Error(json.message || 'No se pudo vaciar');
+      await loadCart();
+    }catch(err){
+      showError(err.message || 'No se pudo vaciar');
+      console.error(err);
+    }
+  }
+
+  btnVaciar.addEventListener('click', ()=>{
+    if(confirm('¿Vaciar carrito?')) clearCart();
+  });
+
+  entrega.addEventListener('change', ()=>{
+    direccionWrap.classList.toggle('d-none', entrega.value !== 'Domicilio');
+  });
+
+  btnFinalizar.addEventListener('click', async ()=>{
+    try{
+      clearError();
+
+      // Si eligió domicilio, pedir dirección
+      if(entrega.value === 'Domicilio' && !String(direccion.value||'').trim()){
+        showError('Debés indicar la dirección para entrega a domicilio.');
+        return;
+      }
+
+      const payload = {
+        entrega: entrega.value,
+        direccion: entrega.value === 'Domicilio' ? direccion.value.trim() : ''
+      };
+
+      // Importante: este endpoint debe existir en tu proyecto
+      const json = await apiPost('../../Controller/OrderController.php?action=create', payload);
+
+      if(!json.success){
+        throw new Error(json.message || 'No se pudo finalizar el pedido');
+      }
+
+      window.location.href = 'misPedidos.php';
+
+    }catch(err){
+      showError(err.message || 'No se pudo finalizar el pedido');
+      console.error(err);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', loadCart);
+})();
+</script>
+
 </body>
 </html>

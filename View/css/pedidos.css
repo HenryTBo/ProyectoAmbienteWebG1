@@ -1,41 +1,147 @@
-/* Estilos para la gestión y creación de pedidos */
-@import url('productos.css');
+/* View/css/pedidos.css */
+/* Tablas y tarjetas modernas, sin romper tu layout actual */
 
-/* Cabecera de las tablas de pedidos */
-#pedidosTable thead.table-dark,
-#orderItemsTable thead.table-dark {
-    background-color: var(--jj-blue-deep);
-    color: var(--jj-cream-light);
+.content { padding: 28px; }
+.page-title { margin: 0; font-size: 34px; letter-spacing: .2px; }
+.page-subtitle { margin-top: 6px; color: rgba(0,0,0,.65); }
+
+.header-row { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:16px; }
+
+.card { background:#fff; border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,.06); padding: 14px; }
+.card-soft { background:#fff; border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,.06); padding: 16px; }
+
+.table-responsive { overflow:auto; }
+.table.modern { width:100%; border-collapse: collapse; min-width: 860px; }
+.table.modern thead th {
+  background: #14384f; color:#fff; font-weight:600; padding: 12px 12px; border-bottom: 0;
+}
+.table.modern td { padding: 12px 12px; border-bottom: 1px solid rgba(0,0,0,.08); background: #fff; }
+.table.modern tr:nth-child(even) td { background: rgba(0,0,0,.02); }
+
+.text-right { text-align:right; }
+.text-center { text-align:center; }
+
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding: 10px 14px; border-radius: 10px; border:1px solid transparent; text-decoration:none; font-weight:600; cursor:pointer; }
+.btn-sm { padding: 8px 10px; border-radius: 10px; font-size: 13px; }
+.btn-group { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+
+.btn-primary { background:#b07a1c; color:#fff; }
+.btn-primary:hover { filter: brightness(0.95); }
+.btn-light { background:#f5f7fb; border-color: rgba(0,0,0,.12); color:#15313f; }
+.btn-danger { background:#d9534f; color:#fff; }
+.btn-danger:hover { filter: brightness(0.95); }
+
+.badge { display:inline-flex; padding:6px 10px; border-radius: 999px; font-weight:700; font-size: 12px; letter-spacing:.2px; }
+.badge-muted { background: rgba(0,0,0,.08); color:#243b4a; }
+.badge-primary { background: rgba(23, 93, 142, .15); color:#175d8e; }
+.badge-success { background: rgba(22, 163, 74, .14); color:#166534; }
+
+.alert { padding: 12px 14px; border-radius: 12px; margin-bottom: 12px; }
+.alert-danger { background: rgba(217, 83, 79, .12); color:#8a1f1b; border: 1px solid rgba(217, 83, 79, .25); }
+.alert-success { background: rgba(22, 163, 74, .12); color:#166534; border: 1px solid rgba(22, 163, 74, .25); }
+
+.empty-state { text-align:center; padding: 28px 14px; }
+.empty-state h3 { margin: 0 0 8px 0; }
+.empty-state p { margin: 0 0 14px 0; color: rgba(0,0,0,.65); }
+
+.cart-footer { display:flex; gap:16px; margin-top: 16px; align-items:stretch; flex-wrap:wrap; }
+.delivery { flex: 1; min-width: 320px; }
+.total { width: 320px; }
+.total-label { color: rgba(0,0,0,.6); font-weight:600; }
+.total-value { font-size: 28px; font-weight: 800; margin-top: 6px; color:#14384f; }
+
+.delivery-title { font-weight:800; font-size: 16px; margin-bottom: 10px; }
+.delivery-options { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+.radio { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.label { font-weight:700; display:block; margin-bottom:6px; }
+.input, .select, .qty-input {
+  width:100%; padding: 10px 12px; border-radius: 10px; border:1px solid rgba(0,0,0,.18);
+  outline:none;
+}
+.select { width: 220px; }
+.qty-input { width: 72px; text-align:center; }
+.inline-form { display:inline-flex; gap:10px; align-items:center; margin:0; }
+.actions { display:flex; gap:12px; justify-content:flex-end; margin-top: 12px; flex-wrap:wrap; }
+.mt-2 { margin-top: 10px; }
+.hint { color: rgba(0,0,0,.6); }
+
+.grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.section-title { margin: 0 0 10px 0; }
+.kv { display:flex; justify-content:space-between; gap:10px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+.kv span { color: rgba(0,0,0,.65); }
+.kv strong { color:#14384f; }
+
+@media (max-width: 1100px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .table.modern { min-width: 760px; }
+}
+/* assets/css/pedidos.css */
+:root{
+  --jj-navy:#0c2c3c;
+  --jj-navy-2:#143044;
+  --jj-gold:#cca44c;
+  --jj-card:#ffffff;
 }
 
-/* Hover sobre filas */
-table tbody tr:hover {
-    background-color: rgba(0,0,0,0.02);
+.jj-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+}
+.jj-title{ font-weight:900; color:var(--jj-navy); }
+.jj-subtitle{ color:rgba(0,0,0,.6); font-weight:600; }
+.jj-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.jj-card{
+  background: var(--jj-card);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.10);
+  overflow: hidden;
 }
 
-/* Precio y subtotal en la creación de pedidos */
-.product-price,
-.sub-total {
-    display: inline-block;
-    min-width: 80px;
+.jj-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.18) 100%);
+  color:#fff;
+  gap:12px;
+}
+.jj-card-head-title{ font-weight:900; font-size: 18px; }
+.jj-search{ max-width: 320px; border-radius: 999px !important; }
+
+.jj-card-body{ padding: 14px 16px; }
+
+.jj-table thead th{
+  font-weight:900;
+  color: rgba(0,0,0,.65);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.jj-table tbody td{ vertical-align: middle; }
+
+.jj-msg{
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight:800;
+}
+.jj-msg.ok{ background: rgba(34,197,94,.12); color: #14532d; border:1px solid rgba(34,197,94,.25); }
+.jj-msg.err{ background: rgba(239,68,68,.12); color: #7f1d1d; border:1px solid rgba(239,68,68,.25); }
+
+.jj-modal{ border-radius: 16px; overflow:hidden; }
+.jj-modal .modal-header{
+  background: linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.18) 100%);
+  color:#fff;
 }
 
-/* Botón para eliminar una fila de pedido */
-.btn-remove {
-    color: var(--jj-red-warm);
-    border-color: var(--jj-red-warm);
-}
-.btn-remove:hover {
-    background-color: var(--jj-red-warm);
-    color: #fff;
-}
-
-/* Ajustes al botón principal de pedido */
-.btn-primary {
-    background-color: var(--jj-blue-deep);
-    border-color: var(--jj-blue-deep);
-}
-.btn-primary:hover {
-    background-color: var(--jj-gold-dark);
-    border-color: var(--jj-gold-dark);
+.btn-primary{
+  background: linear-gradient(135deg, var(--jj-gold), #f1c55a) !important;
+  border: none !important;
+  color: #1b1b1b !important;
+  font-weight: 900 !important;
 }

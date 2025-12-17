@@ -1,0 +1,126 @@
+:root{
+  --jj-navy:#0c2c3c;
+  --jj-navy-2:#143044;
+  --jj-gold:#cca44c;
+  --jj-maroon:#8c1c1c;
+  --jj-cream:#f7f5f0;
+  --jj-graphite:#1c2430;
+}
+
+.cart-hero{
+  border-radius: 18px;
+  padding: 18px 18px;
+  background: linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.18) 100%);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.cart-title{ margin:0; font-weight:900; letter-spacing:.2px; }
+.cart-subtitle{ margin:0; opacity:.9; }
+
+.cart-hero-actions{ display:flex; gap:10px; align-items:center; }
+
+.cart-card{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 16px;
+  overflow:hidden;
+  box-shadow: 0 14px 28px rgba(0,0,0,.10);
+  background: rgba(255,255,255,.95);
+}
+
+.cart-card-header{
+  background: rgba(247,245,240,.85);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.cart-empty{
+  padding: 26px;
+  text-align:center;
+  border-radius: 14px;
+  background: rgba(247,245,240,.65);
+  border: 1px dashed rgba(0,0,0,.10);
+}
+
+.cart-item{
+  display:flex;
+  gap:14px;
+  padding: 12px;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  background:#fff;
+}
+
+.cart-item-img{
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,.06);
+}
+
+.cart-item-body{ flex:1; min-width:0; }
+.cart-item-title{
+  font-weight: 900;
+  color: var(--jj-navy);
+  margin-bottom: 2px;
+  line-height: 1.15;
+}
+.cart-item-meta{ color: rgba(0,0,0,.6); font-size: 13px; }
+
+.cart-item-actions{
+  margin-top: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.cart-item-subtotal{
+  font-weight: 900;
+  color: var(--jj-graphite);
+  min-width: 120px;
+  text-align:right;
+}
+
+.qty{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background: rgba(247,245,240,.85);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.qty-btn{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--jj-gold);
+  font-weight: 900;
+}
+.qty-input{
+  width: 52px;
+  text-align:center;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  padding: 5px 8px;
+  font-weight: 800;
+  background:#fff;
+}
+
+.sticky-summary{ position: sticky; top: 90px; }
+
+.summary-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 8px;
+}
+.summary-row.total strong{ font-size: 18px; }

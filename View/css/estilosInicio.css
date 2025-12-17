@@ -1,77 +1,125 @@
-.marca-titulo {
-    font-family: 'Salsa', cursive !important;
-    font-weight: 400;
+/* View/css/estilosInicio.css
+   Login/Registro/RecuperarAcceso — alineado al logo y sin anchos fijos.
+*/
 
+:root{
+  --jj-navy:   #0c2c3c;
+  --jj-navy-2: #143044;
+  --jj-gold:   #cca44c;
+  --jj-gold-2: #a97823;
+  --jj-maroon: #8c1c1c;
+  --jj-bg:     #f7f5f0;
+  --jj-text:   #1c2430;
 }
 
-.bg-custom {
-    background: linear-gradient(135deg, 
-        #ff4b4b 0%,     
-        #28a745 25%,    
-        #17a2b8 50%,   
-        #ffc107 100%   
-    ) !important;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+*{ box-sizing: border-box; }
+
+body{
+  font-family: Poppins, sans-serif;
+  color: var(--jj-text);
 }
 
-
-.card {
-    border-radius: 15px !important;
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.90) !important;
-    border: none !important;
+/* Fondo corporativo (adiós al gradiente “arcoíris”) */
+.bg-custom{
+  background:
+    radial-gradient(900px 700px at 15% 10%, rgba(204,164,76,.22) 0%, rgba(204,164,76,0) 60%),
+    radial-gradient(900px 700px at 95% 0%, rgba(140,28,28,.16) 0%, rgba(140,28,28,0) 62%),
+    linear-gradient(135deg, var(--jj-navy) 0%, var(--jj-navy-2) 45%, var(--jj-bg) 100%);
+  min-height: 100vh;
 }
 
-
-.card-header h3 {
-    font-family: 'Salsa', cursive !important;
-    font-weight: 400;
-    font-size: 1.8rem;
-    color: #333;
+/* Centrado correcto */
+#layoutAuthentication{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+}
+#layoutAuthentication_content{
+  width: 100%;
+}
+#layoutAuthentication_content .container{
+  padding: 32px 14px;
 }
 
-
-.form-control {
-    border-radius: 10px !important;
-    border: 1px solid #ccc !important;
+/* Card moderna */
+.card.shadow-lg{
+  border: 0 !important;
+  border-radius: 18px !important;
+  overflow: hidden;
+  box-shadow: 0 18px 45px rgba(0,0,0,.22) !important;
+  background: rgba(255,255,255,.94) !important;
 }
 
-
-.btn-primary {
-    background: linear-gradient(135deg, #ff4b4b, #ffc107) !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 10px 20px !important;
-    font-weight: 600 !important;
-    transition: 0.2s ease-in-out !important;
+/* Header */
+.card-header{
+  background: linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.18) 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,.12) !important;
+  color: #fff !important;
+  text-align:center;
+  padding: 18px 16px !important;
 }
 
-.btn-primary:hover {
-    transform: scale(1.05) !important;
-    background: linear-gradient(135deg, #ffc107, #ff4b4b) !important;
+.card-header h3{
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: .3px;
 }
 
-
-a.small, 
-.card-footer a {
-    color: #17a2b8 !important;
-    font-weight: 600 !important;
+/* Logo del login (evita el “logo gigante” y desbordes) */
+.login-logo{
+  display:block;
+  width: min(220px, 70%);
+  height: auto;
+  margin: 0 auto 10px auto;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
 }
 
-.card.shadow-lg {
-    box-shadow: 0px 6px 20px rgba(0,0,0,0.25) !important;
+/* Inputs */
+.form-control{
+  border-radius: 12px !important;
+  border: 1px solid rgba(0,0,0,.16) !important;
+}
+.form-control:focus{
+  border-color: rgba(204,164,76,.75) !important;
+  box-shadow: 0 0 0 .2rem rgba(204,164,76,.22) !important;
 }
 
-.col-lg-5 {
-    max-width: 450px !important;
-    width: 450px !important;
-    flex: 0 0 450px !important;
+/* Botón */
+.btn-primary{
+  background: linear-gradient(135deg, var(--jj-gold), #f1c55a) !important;
+  border: none !important;
+  color: #1b1b1b !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  padding: 10px 18px !important;
+  transition: .15s ease-in-out !important;
+}
+.btn-primary:hover{
+  transform: translateY(-1px);
+  filter: brightness(.97);
 }
 
-.col-lg-7 {
-    max-width: 550px !important;
-    flex: 0 0 550px !important;
+/* Links */
+a.small,
+.card-footer a{
+  color: var(--jj-maroon) !important;
+  font-weight: 600 !important;
+}
+a.small:hover,
+.card-footer a:hover{
+  color: #6f1515 !important;
+}
+
+/* IMPORTANTE: se quitan anchos fijos que dañaban el layout */
+.col-lg-5,
+.col-lg-7{
+  width: auto !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
+}
+
+/* Ajuste móvil */
+@media (max-width: 576px){
+  .card.shadow-lg{ border-radius: 16px !important; }
+  .login-logo{ width: min(200px, 80%); }
 }

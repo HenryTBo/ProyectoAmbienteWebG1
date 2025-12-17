@@ -1,177 +1,186 @@
 <?php
-/*
-    Corrección de la página de administrador (PrincipalAdmin.php)
-    - Ajusta rutas relativas para que funcionen independientemente del directorio base.
-    - Corrige el enlace "Mi Cuenta" para ir al perfil del usuario.
-*/
-
 session_start();
 include_once __DIR__ . '/../layoutInterno.php';
-include_once __DIR__ . '/../../Controller/InicioController.php';
+require_once __DIR__ . '/../../Model/ConexionModel.php';
 
-// Validación de administrador
-if (!isset($_SESSION["ConsecutivoPerfil"]) || $_SESSION["ConsecutivoPerfil"] != "1") {
-    header("Location: InicioSesion.php");
+// Seguridad: solo admin
+$perfil = $_SESSION['ConsecutivoPerfil'] ?? ($_SESSION['User']['ConsecutivoPerfil'] ?? 2);
+if ((int)$perfil !== 1) {
+    header("Location: Principal.php");
     exit;
 }
+
+$nombre = $_SESSION['Nombre'] ?? ($_SESSION['User']['Nombre'] ?? 'Administrador');
+
+/**
+ * Ejecuta un SP que retorna una sola fila con columna "total".
+ * Si falla (SP no existe, etc.), devuelve 0 y no rompe el panel.
+ */
+function sp_count_total($spName) {
+    $cn = OpenConnection();
+    $total = 0;
+
+    try {
+        $result = $cn->query("CALL {$spName}()");
+        if ($result) {
+            $row = $result->fetch_assoc();
+            $total = (int)($row['total'] ?? 0);
+            $result->free();
+        }
+        while ($cn->more_results() && $cn->next_result()) {}
+    } catch (Exception $e) {
+        if (function_exists('SaveError')) { try { SaveError($e); } catch (Exception $ex) {} }
+        $total = 0;
+    }
+
+    CloseConnection($cn);
+    return $total;
+}
+
+// Contadores (requieren que existan estos SP; si no existen, el panel no se cae, solo muestra 0)
+$productosActivos = sp_count_total('sp_Productos_ContarActivos');
+$usuariosTotal    = sp_count_total('sp_Usuarios_Contar');
+$empleadosActivos = sp_count_total('sp_Empleados_ContarActivos');
+$pedidosTotal     = sp_count_total('sp_Pedidos_Contar');
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <?php showCss(); ?>
-    <!-- Utiliza el CSS del panel admin desde la carpeta View/css -->
-    <link href="../css/principalAdmin.css?v=1" rel="stylesheet" />
+  <?php showCss(); ?>
+  <style>
+    .dash-card{
+      border:0;
+      border-radius:18px;
+      box-shadow: 0 14px 35px rgba(0,0,0,.10);
+    }
+    .dash-card .label{ color:#6c757d; font-weight:700; }
+    .dash-card .value{ font-size:34px; font-weight:900; color:#b10d0d; }
+    .mod-card{
+      border:0;
+      border-radius:18px;
+      box-shadow: 0 14px 35px rgba(0,0,0,.10);
+      overflow:hidden;
+    }
+    .mod-card h5{ font-weight:900; color:#0c2c3c; }
+    .btn-soft{
+      border-radius:14px !important;
+      font-weight:800 !important;
+    }
+  </style>
 </head>
-<body class="sb-nav-fixed">
-    <?php showNavBar(); ?>
-    <div id="layoutSidenav">
-        <?php showSideBar(); ?>
-        <div id="layoutSidenav_content">
-            <main class="p-4">
-                <!-- TÍTULO -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 class="page-title">Panel Administrador</h2>
-                        <p class="page-sub">Bienvenido, <?php echo $_SESSION["Nombre"] ?? ''; ?></p>
-                    </div>
-                    <!-- BOTÓN IR A PRODUCTOS -->
-                    <a href="productos.php" class="btn btn-products">
-                        📦 Ir a Productos
-                    </a>
-                </div>
-                <!-- FILA DE CARDS DE ESTADÍSTICAS -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-title">Productos Registrados</div>
-                            <div class="stat-value" id="statProducts">--</div>
-                            <div class="stat-sub">Activos en el inventario</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-title">Usuarios</div>
-                            <div class="stat-value" id="statUsers">--</div>
-                            <div class="stat-sub">Cuentas totales</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-title">Empleados</div>
-                            <div class="stat-value" id="statEmployees">--</div>
-                            <div class="stat-sub">Activos en planilla</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-title">Pedidos</div>
-                            <!-- Cantidad total de pedidos será calculada vía AJAX -->
-                            <div class="stat-value" id="statOrders">--</div>
-                            <div class="stat-sub">Pedidos totales</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- OPCIONES RÁPIDAS -->
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <div class="card action-card">
-                            <div class="card-body">
-                                <h5>Gestión de Productos</h5>
-                                <p>Administra todo el inventario, equipos, licores y más.</p>
-                                <a href="productos.php" class="btn btn-outline-primary">Ir al módulo</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card action-card">
-                            <div class="card-body">
-                                <h5>Gestión de Cuentas</h5>
-                                <p>Controlá los roles y permisos de cada cuenta.</p>
-                                <a href="usuarios.php" class="btn btn-outline-primary">Ir al módulo</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card action-card">
-                            <div class="card-body">
-                                <h5>Gestión de Empleados</h5>
-                                <p>Gestioná la planilla de colaboradores.</p>
-                                <a href="empleados.php" class="btn btn-outline-primary">Ir al módulo</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card action-card">
-                            <div class="card-body">
-                                <h5>Gestión de Pedidos</h5>
-                                <p>Revisá y actualizá los pedidos de tus clientes.</p>
-                                <a href="gestionPedidos.php" class="btn btn-outline-primary">Ir al módulo</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card action-card">
-                            <div class="card-body">
-                                <h5>Mi Cuenta</h5>
-                                <p>Editá tus datos personales y preferencias.</p>
-                                <a href="../Usuario/Perfil.php" class="btn btn-outline-primary">Entrar</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-            <?php showFooter(); ?>
-        </div>
-    </div>
-    <?php showJs(); ?>
-    <!-- Scripts para obtener estadísticas dinámicas -->
-    <script>
-        // Productos
-        fetch("../../Controller/ProductController.php?action=list")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById("statProducts").innerText = data.data.length;
-                }
-            })
-            .catch(() => {
-                document.getElementById("statProducts").innerText = "--";
-            });
-        // Usuarios
-        fetch("../../Controller/UserAdminController.php?action=list")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById("statUsers").innerText = data.data.length;
-                }
-            })
-            .catch(() => {
-                document.getElementById("statUsers").innerText = "--";
-            });
-        // Empleados
-        fetch("../../Controller/EmployeeController.php?action=list")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById("statEmployees").innerText = data.data.length;
-                }
-            })
-            .catch(() => {
-                document.getElementById("statEmployees").innerText = "--";
-            });
 
-        // Pedidos
-        fetch("../../Controller/OrderController.php?action=list")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById("statOrders").innerText = data.data.length;
-                }
-            })
-            .catch(() => {
-                document.getElementById("statOrders").innerText = "--";
-            });
-    </script>
+<body class="sb-nav-fixed">
+<?php showNavBar(); ?>
+
+<div id="layoutSidenav">
+  <?php showSideBar(); ?>
+
+  <div id="layoutSidenav_content">
+    <main class="container-fluid px-4 mt-4">
+
+      <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+          <h2 class="fw-bold mb-1">Panel Administrador</h2>
+          <div class="text-muted">Bienvenido, <?php echo htmlspecialchars($nombre); ?></div>
+        </div>
+
+        <a href="productos.php" class="btn btn-danger btn-soft">
+          <i class="fas fa-box me-1"></i> Ir a Productos
+        </a>
+      </div>
+
+      <!-- Resumen -->
+      <div class="row mt-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card dash-card">
+            <div class="card-body">
+              <div class="label">Productos Registrados</div>
+              <div class="value"><?php echo (int)$productosActivos; ?></div>
+              <div class="text-muted">Activos en el inventario</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card dash-card">
+            <div class="card-body">
+              <div class="label">Cuentas</div>
+              <div class="value"><?php echo (int)$usuariosTotal; ?></div>
+              <div class="text-muted">Usuarios registrados</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card dash-card">
+            <div class="card-body">
+              <div class="label">Empleados</div>
+              <div class="value"><?php echo (int)$empleadosActivos; ?></div>
+              <div class="text-muted">Activos en planilla</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card dash-card">
+            <div class="card-body">
+              <div class="label">Pedidos</div>
+              <div class="value"><?php echo (int)$pedidosTotal; ?></div>
+              <div class="text-muted">Pedidos totales</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Módulos -->
+      <div class="row mt-2">
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card mod-card">
+            <div class="card-body">
+              <h5>Gestión de Productos</h5>
+              <p class="text-muted mb-3">Administra todo el inventario, equipos, licores y más.</p>
+              <a href="productos.php" class="btn btn-outline-danger btn-soft">Ir al módulo</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card mod-card">
+            <div class="card-body">
+              <h5>Gestión de Cuentas</h5>
+              <p class="text-muted mb-3">Administrá usuarios y perfiles del sistema.</p>
+              <a href="usuarios.php" class="btn btn-outline-danger btn-soft">Ir al módulo</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card mod-card">
+            <div class="card-body">
+              <h5>Gestión de Empleados</h5>
+              <p class="text-muted mb-3">Gestioná la planilla de colaboradores.</p>
+              <a href="empleados.php" class="btn btn-outline-danger btn-soft">Ir al módulo</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+          <div class="card mod-card">
+            <div class="card-body">
+              <h5>Gestión de Pedidos</h5>
+              <p class="text-muted mb-3">Revisá, asigná conductor y actualizá estados.</p>
+              <a href="gestionPedidos.php" class="btn btn-outline-danger btn-soft">Ir al módulo</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <?php showFooter(); ?>
+  </div>
+</div>
+
+<?php showJs(); ?>
 </body>
 </html>

@@ -1,0 +1,205 @@
+:root{
+  --jj-navy:#0c2c3c;
+  --jj-navy-2:#143044;
+  --jj-gold:#cca44c;
+  --jj-gold-2:#a97823;
+  --jj-maroon:#8c1c1c;
+  --jj-cream:#f7f5f0;
+  --jj-graphite:#1c2430;
+}
+
+.page-shell{ padding-bottom: 28px; }
+
+.page-hero{
+  margin-top: 18px;
+  margin-bottom: 14px;
+  padding: 18px 18px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, rgba(12,44,60,1) 0%, rgba(20,48,68,1) 70%, rgba(204,164,76,.14) 100%);
+  color:#fff;
+  box-shadow: 0 14px 32px rgba(0,0,0,.14);
+}
+.page-hero h1{
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: .2px;
+}
+.page-hero p{
+  margin: 6px 0 0 0;
+  opacity: .92;
+  font-weight: 700;
+}
+
+.btn-soft{
+  border-radius: 999px !important;
+  font-weight: 900 !important;
+}
+
+.search-pill{
+  border-radius: 999px !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  padding-left: 16px !important;
+}
+
+.card-soft{
+  background: rgba(255,255,255,.95);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0,0,0,.10);
+}
+
+.card-soft .head,
+.card-soft .card-head{
+  padding: 14px 16px;
+  background: rgba(247,245,240,.9);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-soft .head .title,
+.card-soft .card-head .title{
+  display:flex; align-items:center; gap:10px;
+  font-weight: 900;
+  color: var(--jj-navy);
+}
+.card-soft .body,
+.card-soft .card-body{
+  padding: 16px;
+}
+
+.table-wrap{ overflow:auto; }
+
+.table-modern{
+  width:100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 860px;
+}
+.table-modern thead th{
+  background: rgba(12,44,60,.06);
+  color: var(--jj-navy);
+  font-weight: 900;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  white-space: nowrap;
+}
+.table-modern tbody td{
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  vertical-align: middle;
+}
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+.badge-state{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+.st-pendiente{ background: rgba(204,164,76,.16); color: var(--jj-graphite); }
+.st-proceso{ background: rgba(20,48,68,.12); color: var(--jj-navy); }
+.st-entregado{ background: rgba(0,128,0,.10); color: #0b3d0b; }
+.st-cancelado{ background: rgba(140,28,28,.10); color: var(--jj-maroon); }
+
+.empty{
+  padding: 26px 14px;
+  text-align:center;
+}
+.empty h3{ font-weight: 900; margin: 0 0 6px 0; color: var(--jj-navy); }
+.empty p{ margin: 0; color: rgba(0,0,0,.65); font-weight: 700; }
+
+.toast-jj{
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12,44,60,.96);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+  opacity: 0;
+  transition: .15s ease-in-out;
+  z-index: 99999;
+  font-weight: 800;
+  font-size: 13px;
+}
+.toast-jj.visible{ opacity: 1; }
+
+/* Carrito */
+.cart-item{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  padding: 12px;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 14px;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 10px 22px rgba(0,0,0,.06);
+}
+.cart-item + .cart-item{ margin-top: 10px; }
+
+.item-img{
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+}
+
+.item-name{
+  font-weight: 900;
+  color: var(--jj-navy);
+  margin: 0;
+}
+.item-meta{
+  color: rgba(0,0,0,.62);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.qty{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+.qty button{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(247,245,240,.9);
+  font-weight: 900;
+}
+.qty span{
+  min-width: 26px;
+  text-align:center;
+  font-weight: 900;
+}
+
+.summary .rowline{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-weight: 800;
+}
+.summary .rowline.total{
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0,0,0,.08);
+  font-weight: 900;
+  color: var(--jj-graphite);
+}
+.select-soft, .input-soft{
+  border-radius: 12px !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+}
