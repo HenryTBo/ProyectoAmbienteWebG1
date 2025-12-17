@@ -1,17 +1,16 @@
 <?php
 // Model/ConexionModel.php
-// Conexión MySQL (XAMPP) + compatibilidad OpenConnection/getConnection
+// Conexión MySQL (XAMPP / MySQL 8.0)
 
-// Ajustá si tu configuración es distinta
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', 'dannyJP_2021'); // si tu root no tiene clave, pon ''
+if (!defined('DB_PASS')) define('DB_PASS', ''); // ✅ root SIN contraseña
 if (!defined('DB_NAME')) define('DB_NAME', 'proyectoambienteweb');
 
 if (!function_exists('OpenConnection')) {
     function OpenConnection(): mysqli
     {
-        $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, 3306);
 
         if ($conn->connect_error) {
             throw new Exception("Error de conexión MySQL: " . $conn->connect_error);
@@ -27,8 +26,6 @@ if (!function_exists('CloseConnection')) {
     {
         if ($context instanceof mysqli) {
             $context->close();
-        } elseif (!empty($context)) {
-            @mysqli_close($context);
         }
     }
 }
@@ -59,7 +56,7 @@ if (!function_exists('SaveError')) {
             $msg = ($error instanceof Throwable) ? $error->getMessage() : (string)$error;
             $mensaje = mysqli_real_escape_string($context, $msg);
 
-            // Solo intenta registrar si existe el SP (si no, no rompe)
+            // Solo si existe el SP
             $context->query("CALL RegistrarError('$mensaje')");
             CloseConnection($context);
         } catch (Throwable $t) {
